@@ -1,3 +1,4 @@
+import os
 import logging
 from flask import Flask, send_file
 from scout_sync import sync
@@ -13,4 +14,4 @@ def root():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port='3000')
+    app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000))
