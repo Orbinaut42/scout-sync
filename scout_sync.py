@@ -33,6 +33,7 @@ sys.excepthook = exception_logger
 
 locale.setlocale(locale.LC_TIME, '')
 
+
 class _Event:    
     __emails = {k: v for k, v in _CONFIG.items('EMAILS')}
     __names = {v: k for k, v in _CONFIG.items('EMAILS')}
@@ -427,7 +428,6 @@ class _TableHandler:
         
         return events
     
-
 
 class _ScheduleHandler:
     arenas = dict(_CONFIG['SCHEDULE_ARENAS'])
