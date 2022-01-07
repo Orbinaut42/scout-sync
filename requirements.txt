@@ -1,0 +1,7 @@
+google
+ics
+ezodf
+google-api-python-client
+google-auth-oauthlib
+lxml
+flask
