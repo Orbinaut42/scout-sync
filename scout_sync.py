@@ -4,21 +4,26 @@ import logging
 import locale
 import requests
 import datetime as dt
-import pickle
 import ics
 import json
 from argparse import ArgumentParser
 from configparser import ConfigParser
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from ezodf import opendoc, Cell
+import googleapiclient.discovery
+import google_auth_oauthlib
+import google
+import ezodf
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 _CONFIG = ConfigParser()
 _CONFIG.optionxform = str
 _CONFIG.read('scout_sync.cfg', encoding='utf8')
+
+# read email adresses and OAuth credentials from environment variables for Replit compatibility
+for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
+    _CONFIG['EMAILS'][name] = email
+
+_CONFIG['CALENDAR']['credentials'] = os.getenv('OAUTH_CREDENTIALS', default='')
 
 logging.basicConfig(filename=_CONFIG.get('COMMON', 'log_file'),
                     format='%(asctime)s %(levelname)s: %(message)s',
@@ -175,7 +180,7 @@ class _Event:
             if c.startswith('Scouter') and not self.has_scouters:
                 row.append(None)
             else:                 
-                row.append(Cell((val or ''), value_type = tp))
+                row.append(ezodf.Cell((val or ''), value_type = tp))
             
         return row
 
@@ -217,24 +222,13 @@ class _CalendarHandler:
         self.__service = None
 
     def connect(self):
-        creds = None
-        if os.path.exists('gc.token'):
-            with open('gc.token', 'rb') as token:
-                creds = pickle.load(token)
+        cred_info = _CONFIG.get('CALENDAR', 'credentials')
+        credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(json.loads(cred_info) if cred_info else None)
 
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                scopes = ['https://www.googleapis.com/auth/calendar.events']
-                flow = InstalledAppFlow.from_client_secrets_file('credentials.json',
-                                                                 scopes)
-                creds = flow.run_local_server(port=0)
+        if not credentials.valid and credentials.expired and credentials.refresh_token:
+            credentials.refresh(google.auth.transport.requests.Request())
 
-            with open('gc.token', 'wb') as token:
-                pickle.dump(creds, token)
-
-        self.__service = build('calendar', 'v3', credentials=creds)
+        self.__service = googleapiclient.discovery.build('calendar', 'v3', credentials=credentials, static_discovery=False)
         if self.__service:
             logging.info("Connected to calendar: {0}".format(self.__id))
             return True
@@ -334,7 +328,7 @@ class _TableHandler:
         self.__index = {}
 
     def connect(self):
-        self.__file = opendoc(self.__file_name)
+        self.__file = ezodf.opendoc(self.__file_name)
         if self.__file:
             self.__table = self.__file.sheets[(self.__sheet_name or 0)]
             for cell in self.__table.row(self.__captions_row):
@@ -549,15 +543,30 @@ def sync(source, dest, simulate=False):
 
     logging.info("Sync finished")
 
+def refresh_oauth_credentials():
+    scopes = ['https://www.googleapis.com/auth/calendar.events']
+    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file('credentials.json', scopes)
+    credentials = flow.run_local_server(port=0)
+
+    _CONFIG['CALENDAR']['credentials'] = credentials.to_json()
+    return credentials
+
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--from', dest='source',
-                        choices=['calendar', 'table', 'schedule'],
-                        required=True)
+                        choices=['calendar', 'table', 'schedule'])
     parser.add_argument('--to', dest='dest',
-                        choices=['calendar', 'table'],
-                        required=True)
+                        choices=['calendar', 'table'])
     parser.add_argument('--simulate', action='store_true')
+    parser.add_argument('--refresh-credentials', action='store_true')
     ARGS = parser.parse_args()
 
-    sync(ARGS.source, ARGS.dest, ARGS.simulate)
+    if ARGS.refresh_credentials:
+        credentials = refresh_oauth_credentials()
+        print(credentials.to_json())
+        
+    if ARGS.source and ARGS.dest:
+        sync(ARGS.source, ARGS.dest, ARGS.simulate)
+
+    if not ((ARGS.source and ARGS.dest) or ARGS.refresh_credentials):
+        parser.print_usage()
