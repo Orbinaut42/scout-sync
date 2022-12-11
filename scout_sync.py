@@ -38,7 +38,7 @@ sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.error(exc_ty
 
 locale.setlocale(locale.LC_TIME, '')
 
-class _Event:    
+class Event:    
     __emails = {k: v for k, v in _CONFIG.items('EMAILS')}
     __names = {v: k for k, v in _CONFIG.items('EMAILS')}
 
@@ -114,7 +114,7 @@ class _Event:
         e = cls()
         e.datetime = event.begin.to(_CONFIG.get('COMMON', 'timezone')).naive
         location_code = event.name.split(',')[1].strip()
-        e.location = _ScheduleHandler.arenas.get(location_code, location_code) or None
+        e.location = ScheduleHandler.arenas.get(location_code, location_code) or None
         e.league = team['league_name']
         e.opponent = event.name.replace(team['team_name'] + '-', '').split(',')[0].strip() or None
         e.scouter1 = None
@@ -122,7 +122,7 @@ class _Event:
         e.scouter3 = None
         e.has_scouters = False
 
-        if location_code and location_code not in _ScheduleHandler.arenas:
+        if location_code and location_code not in ScheduleHandler.arenas:
             logging.warning(f"Event at {e.datetime}: Unknown arena in Schedule: {location_code}")
         
         return e
@@ -132,7 +132,7 @@ class _Event:
         e = cls()
         e.datetime = dt.datetime.fromisoformat(f'{event["kickoffDate"]}T{event["kickoffTime"]}')
         location_id = str(event['matchInfo']['spielfeld']['id'])
-        e.location = _ScheduleHandler.arenas.get(location_id, event['matchInfo']['spielfeld']['bezeichnung'])
+        e.location = ScheduleHandler.arenas.get(location_id, event['matchInfo']['spielfeld']['bezeichnung'])
         e.league = league_name
         e.opponent = event['guestTeam']['teamname']
         e.scouter1 = None
@@ -140,7 +140,7 @@ class _Event:
         e.scouter3 = None
         e.has_scouters = False
 
-        if location_id and location_id not in _ScheduleHandler.arenas:
+        if location_id and location_id not in ScheduleHandler.arenas:
             logging.warning(f"Event at {e.datetime}: Unknown arena ID in Schedule: {location_id}")
         
         return e
@@ -150,10 +150,10 @@ class _Event:
         if self.datetime:
             event['start'] = {
                 'dateTime': self.datetime.isoformat(),
-                'timeZone': _CalendarHandler.timezone}
+                'timeZone': CalendarHandler.timezone}
             event['end'] = {
                 'dateTime': (self.datetime + dt.timedelta(hours=2)).isoformat(),
-                'timeZone': _CalendarHandler.timezone}
+                'timeZone': CalendarHandler.timezone}
         else:
             logging.warning('Can not create calendar event: event has no date')
             return None
@@ -234,7 +234,7 @@ class _Event:
             all(s in event_scouter_list for s in self_scouter_list)])
 
 
-class _CalendarHandler:
+class CalendarHandler:
     timezone = _CONFIG.get('COMMON', 'timezone')
 
     def __init__(self, id):
@@ -282,7 +282,7 @@ class _CalendarHandler:
             return
 
         for id in events:
-            cal_ev = _Event.from_calendar_event(
+            cal_ev = Event.from_calendar_event(
                 self.__service.events().get(calendarId=self.__id, eventId=id).execute())
 
             new_ev = events[id]
@@ -309,7 +309,7 @@ class _CalendarHandler:
             return
         
         for id in ids:
-            ev = _Event.from_calendar_event(
+            ev = Event.from_calendar_event(
                 self.__service.events().get(calendarId=self.__id, eventId=id).execute())
             now = dt.datetime.now()
             act = self.__service.events().delete(
@@ -331,10 +331,10 @@ class _CalendarHandler:
             singleEvents=True,
             orderBy='startTime').execute()   
         ev_list = events.get('items', [])
-        return {ev['id']: _Event.from_calendar_event(ev) for ev in ev_list}
+        return {ev['id']: Event.from_calendar_event(ev) for ev in ev_list}
 
 
-class _TableHandler:
+class TableHandler:
     __captions_row = _CONFIG.getint('TABLE', 'captions_row')
 
     def __init__(self, file_name, sheet_name=None):
@@ -403,7 +403,7 @@ class _TableHandler:
 
     def update_events(self, events):
         for i in events:
-            ev = _Event.from_table_row(self.__index[i], self.__captions)
+            ev = Event.from_table_row(self.__index[i], self.__captions)
             for c1, c2 in zip(self.__index[i], events[i].as_ods_row(self.__captions)):
                 if c2 is None:
                     continue
@@ -413,17 +413,17 @@ class _TableHandler:
             if not SIMULATE:
                 self.__file.save()
 
-            new_ev = _Event.from_table_row(self.__index[i], self.__captions)
+            new_ev = Event.from_table_row(self.__index[i], self.__captions)
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in table:\n\t-\t{ev}\n\t+\t{new_ev}")
         
     def delete_events(self, ids):
         for idx in ids:
-            ev = _Event.from_table_row(self.__index[idx], self.__captions)
+            ev = Event.from_table_row(self.__index[idx], self.__captions)
             for i, row in enumerate(self.__table.rows()):
                 if i <= self.__captions_row:
                     continue
 
-                if ev == _Event.from_table_row(row, self.__captions):
+                if ev == Event.from_table_row(row, self.__captions):
                     self.__table.delete_rows(i)
 
                     if not SIMULATE:
@@ -438,14 +438,14 @@ class _TableHandler:
 
         for i, row in self.__index.items():
             try:
-                events[i] = _Event.from_table_row(row, self.__captions)
+                events[i] = Event.from_table_row(row, self.__captions)
             except (TypeError, ValueError) as err:
                 logging.warning(f"Can not create event: {err}")     
         
         return events
     
 
-class _ScheduleHandler:
+class ScheduleHandler:
     arenas = dict(_CONFIG['SCHEDULE_ARENAS'])
     __REQUEST_TIMEOUT = 5
 
@@ -463,7 +463,7 @@ class _ScheduleHandler:
             for league in self.__leagues:
                 # get the complete league schedule
                 league_name, league_id, team_id = league.values()
-                r = s.get(schedule_url.format(league_id=league_id), timeout=_ScheduleHandler.__REQUEST_TIMEOUT)
+                r = s.get(schedule_url.format(league_id=league_id), timeout=ScheduleHandler.__REQUEST_TIMEOUT)
 
                 if r.status_code == 200:
                     try:
@@ -479,7 +479,7 @@ class _ScheduleHandler:
 
                 # get the details for each match
                 for match_id in team_matches:
-                    r = s.get(match_info_url.format(match_id=match_id), timeout=_ScheduleHandler.__REQUEST_TIMEOUT)
+                    r = s.get(match_info_url.format(match_id=match_id), timeout=ScheduleHandler.__REQUEST_TIMEOUT)
 
                     if r.status_code == 200:
                         try:
@@ -502,7 +502,7 @@ class _ScheduleHandler:
             cancelled = any([match['abgesagt'], match['verzicht']]) 
 
             if not cancelled:
-                events.append(_Event.from_JSON_schedule(match, league_name))
+                events.append(Event.from_JSON_schedule(match, league_name))
 
         return {i: event for i, event in enumerate(events)}
 
@@ -513,9 +513,9 @@ def sync(source, dest):
     
     schedule_leagues = [_CONFIG.getlist('SCHEDULE_LEAGUES', o) for o in _CONFIG['SCHEDULE_LEAGUES'].keys()]
     handler = {
-        'calendar': (_CalendarHandler, _CONFIG.get('CALENDAR', 'id')),
-        'table': (_TableHandler, _CONFIG.get('TABLE', 'file'), _CONFIG.get('TABLE', 'sheet')),
-        'schedule': (_ScheduleHandler, schedule_leagues)}
+        'calendar': (CalendarHandler, _CONFIG.get('CALENDAR', 'id')),
+        'table': (TableHandler, _CONFIG.get('TABLE', 'file'), _CONFIG.get('TABLE', 'sheet')),
+        'schedule': (ScheduleHandler, schedule_leagues)}
     source_hdl = handler[source][0](*handler[source][1:])
     dest_hdl = handler[dest][0](*handler[dest][1:])
     
@@ -529,7 +529,7 @@ def sync(source, dest):
     update_events = {}
     delete_events = list(dest_events.keys())
 
-    if isinstance(source_hdl, _ScheduleHandler):
+    if isinstance(source_hdl, ScheduleHandler):
         leagues = [l[0] for l in schedule_leagues]
 
         for id in dest_events.keys():
@@ -549,7 +549,7 @@ def sync(source, dest):
                     delete_events.remove(id)
                 break
         else:
-            if ev.datetime or not isinstance(dest_hdl, _CalendarHandler):
+            if ev.datetime or not isinstance(dest_hdl, CalendarHandler):
                 if ev not in new_events:
                     new_events.append(ev)
 
