@@ -520,7 +520,7 @@ def sync(source, dest):
     dest_hdl = handler[dest][0](*handler[dest][1:])
     
     if not (source_hdl.connect() and dest_hdl.connect()):
-        return
+        raise RuntimeError('Connection to the target failed.')
     
     source_events = source_hdl.list_events().values()
     dest_events = dest_hdl.list_events()
@@ -558,6 +558,7 @@ def sync(source, dest):
     dest_hdl.delete_events(delete_events)  
 
     logging.info("Sync finished")
+    return True
 
 def refresh_oauth_credentials():
     credentials_file = 'credentials.json'

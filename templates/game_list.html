@@ -1,0 +1,24 @@
+<!doctype html>
+
+<table>
+    <tr>
+        <th>Datum</th>
+        <th>Zeit</th>
+        <th>Halle</th>
+        <th>Liga</th>
+        <th>Gegner</th>
+        <th>Scouter</th>
+    </tr>
+    {% for event in events.values(): %}
+    <tr>
+        <td>{{event.datetime.strftime('%a, %d.%m.%y')}}</td>
+        <td>{{event.datetime.strftime('%H:%M') if event.datetime.strftime('%H:%M') != '00:00' else ''}}</td>
+        <td>{{event.location or ''}}</td>
+        <td>{{event.league or ''}}</td>
+        <td>{{event.opponent or ''}}</td>
+        <td>{{event.scouter1 or ''}}</td>
+        <td>{{event.scouter2 or ''}}</td>
+        <td>{{event.scouter3 or ''}}</td>
+    </tr>
+    {% endfor %}
+</table>

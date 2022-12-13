@@ -1,7 +1,8 @@
 import os
 import logging
-from flask import Flask, send_file, request, abort
-from scout_sync import sync
+from configparser import ConfigParser
+from flask import Flask, render_template, request, abort
+from scout_sync import sync, CalendarHandler
 
 app = Flask('scout_sync')
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
@@ -22,11 +23,22 @@ def root():
 
         if source not in targets or dest not in targets:
             abort(400, 'invalid "from" or "to" argument')
+        
+        try:
+            sync(source, dest)
+        except:
+            abort(500)
+        
+        return 'OK'
 
-    answer = 'return table' if not sync_request else f"sync({source}, {dest})"
-    # sync('schedule', 'calendar')
-    return answer
+    config = ConfigParser()
+    config.read('scout_sync.cfg', encoding='utf8')
 
+    calendar = CalendarHandler(config.get('CALENDAR', 'id'))
+    calendar.connect()
+    events = calendar.list_events()
+
+    return render_template('game_list.html', events=events)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.environ.get('PORT', 3000))
