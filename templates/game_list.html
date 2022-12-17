@@ -1,24 +1,89 @@
-<!doctype html>
-
-<table>
-    <tr>
-        <th>Datum</th>
-        <th>Zeit</th>
-        <th>Halle</th>
-        <th>Liga</th>
-        <th>Gegner</th>
-        <th>Scouter</th>
-    </tr>
-    {% for event in events.values(): %}
-    <tr>
-        <td>{{event.datetime.strftime('%a, %d.%m.%y')}}</td>
-        <td>{{event.datetime.strftime('%H:%M') if event.datetime.strftime('%H:%M') != '00:00' else ''}}</td>
-        <td>{{event.location or ''}}</td>
-        <td>{{event.league or ''}}</td>
-        <td>{{event.opponent or ''}}</td>
-        <td>{{event.scouter1 or ''}}</td>
-        <td>{{event.scouter2 or ''}}</td>
-        <td>{{event.scouter3 or ''}}</td>
-    </tr>
-    {% endfor %}
-</table>
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        font-family: Tahoma, sans-serif;
+      }
+      table {
+        table-layout: fixed;
+        border-spacing:  0px;
+      } 
+      thead {
+        position: sticky;
+        top: 0;
+        background: white;
+      }
+      th, td {
+        padding-top: .15em;
+        padding-bottom: .15em;
+        padding-left: .25em;
+        padding-right: .25em;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+      }
+      #date {
+        width: 9%
+      }
+      #time {
+        width: 5%
+      }
+      #location {
+        width: 17%
+      }
+      #league {
+        width: 10%
+      }
+      #scouter {
+        width: 25%
+      }
+      th {
+        text-align: left;
+        border-bottom: solid;
+        border-top: solid;
+      }
+      tr:nth-child(even) {
+        background-color: #f0f0f0;
+      }
+      .past {
+        color: #606060;
+      }
+      @media only screen and (max-width: 768px) {
+        table {
+          width: 100%;
+          font-size: 1.4vw;
+        }
+      }
+    </style>
+    <title>Scouting 22/23</title>
+  </head>
+  <body>
+    <table>
+      <thead>
+        <tr>
+          <th id="date">Datum</th>
+          <th id="time">Zeit</th>
+          <th id="location">Halle</th>
+          <th id="league">Liga</th>
+          <th id="opponent">Gegner</th>
+          <th id="scouter" colspan="3">Scouter</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in events.values(): %}
+        <tr class={{"upcoming" if event.datetime > today else "past"}}>
+          <td>{{event.datetime.strftime('%a, %d.%m.%y')}}</td>
+          <td>{{event.datetime.strftime('%H:%M') if event.datetime.strftime('%H:%M') != '00:00' else ''}}</td>
+          <td>{{event.location or ''}}</td>
+          <td>{{event.league or ''}}</td>
+          <td>{{event.opponent or ''}}</td>
+          <td>{{event.scouter1 or ''}}</td>
+          <td>{{event.scouter2 or ''}}</td>
+          <td>{{event.scouter3 or ''}}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>   
+  </body>
+</html>

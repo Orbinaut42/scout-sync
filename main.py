@@ -1,5 +1,6 @@
 import os
 import logging
+import datetime
 from configparser import ConfigParser
 from flask import Flask, render_template, request, abort
 from scout_sync import sync, CalendarHandler
@@ -38,7 +39,7 @@ def root():
     calendar.connect()
     events = calendar.list_events()
 
-    return render_template('game_list.html', events=events)
+    return render_template('game_list.html', events=events, today=datetime.datetime.today())
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.environ.get('PORT', 3000))
