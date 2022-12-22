@@ -8,30 +8,25 @@ from scout_sync import sync, CalendarHandler
 app = Flask('scout_sync')
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
+@app.route('/sync')
+def sync_():
+    targets = ['calendar', 'schedule', 'table']
+    source = request.args.get('from')
+    dest = request.args.get('to')
+
+    if source not in targets or dest not in targets:
+        abort(400, 'invalid "from" or "to" argument')
+    
+    try:
+        sync(source, dest)
+    except:
+        abort(500)
+    
+    return 'OK'
+
 
 @app.route('/')
 def root():
-    parse_bool = lambda s: {'true': True, 'True': True, 'false': False, 'False': False}.get(s)
-
-    sync_request = request.args.get('sync', False, type=parse_bool)
-    if not isinstance(sync_request, bool):
-        abort(400, 'invalid "sync_request" argument')
-
-    if sync_request:
-        targets = ['calendar', 'schedule', 'table']
-        source = request.args.get('from')
-        dest = request.args.get('to')
-
-        if source not in targets or dest not in targets:
-            abort(400, 'invalid "from" or "to" argument')
-        
-        try:
-            sync(source, dest)
-        except:
-            abort(500)
-        
-        return 'OK'
-
     config = ConfigParser()
     config.read('scout_sync.cfg', encoding='utf8')
 
