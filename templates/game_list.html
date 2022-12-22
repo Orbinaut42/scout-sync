@@ -8,6 +8,8 @@
       table {
         table-layout: fixed;
         border-spacing:  0px;
+        width: 100%;
+        font-size: 1.4vw;
       } 
       thead {
         position: sticky;
@@ -49,10 +51,10 @@
       .past {
         color: #606060;
       }
-      @media only screen and (max-width: 768px) {
+      @media only screen and (min-width: 768px) {
         table {
-          width: 100%;
-          font-size: 1.4vw;
+          width: initial;
+          font-size: initial;
         }
       }
     </style>
