@@ -1,9 +1,12 @@
 import os
 import logging
 import datetime
+import locale
 from configparser import ConfigParser
 from flask import Flask, render_template, request, abort
 from scout_sync import sync, CalendarHandler
+
+locale.setlocale(locale.LC_TIME, 'de_DE')
 
 app = Flask('scout_sync')
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
