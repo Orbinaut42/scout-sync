@@ -19,8 +19,8 @@ def sync_():
     
     try:
         sync(source, dest)
-    except Exception as e:
-        abort(500, e)
+    except:
+        abort(500)
     
     return 'OK'
 
