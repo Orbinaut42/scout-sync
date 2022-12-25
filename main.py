@@ -1,12 +1,9 @@
 import os
 import logging
-import datetime
-import locale
+import arrow
 from configparser import ConfigParser
 from flask import Flask, render_template, request, abort
 from scout_sync import sync, CalendarHandler
-
-locale.setlocale(locale.LC_TIME, 'de_DE')
 
 app = Flask('scout_sync')
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
@@ -37,7 +34,7 @@ def root():
     calendar.connect()
     events = calendar.list_events()
 
-    return render_template('game_list.html', events=events, today=datetime.datetime.today())
+    return render_template('game_list.html', events=events, today=arrow.now(config.get('COMMON', 'timezone')).date())
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=os.environ.get('PORT', 3000))
