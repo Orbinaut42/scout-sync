@@ -90,7 +90,7 @@ class Event:
         e = cls()
         e.datetime = dt.datetime.fromisoformat(event['start']['dateTime'])
         e.location = event.get('location', None)
-        e.league = event.get('summary', None).replace('Scouting ', '')
+        e.league = event.get('summary', '').replace('Scouting ', '') or None
         e.opponent = event.get('description', None)
         scouter_list = []
         for a in event.get('attendees', []):
