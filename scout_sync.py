@@ -3,7 +3,7 @@ import os
 import logging
 import locale
 import requests
-import datetime as dt
+import arrow
 import json
 from argparse import ArgumentParser
 from configparser import ConfigParser
@@ -25,6 +25,7 @@ for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
 
 _CONFIG['CALENDAR']['credentials'] = os.getenv('OAUTH_CREDENTIALS', default='')
 
+TIMEZONE = _CONFIG.get('COMMON', 'timezone')
 SIMULATE = False
 
 logging.basicConfig(
@@ -58,37 +59,36 @@ class Event:
         row_vals = {cap: cell.value for cell, cap in zip(row, captions) if cap}
             
         try:
-            date = dt.date.fromisoformat(row_vals['Datum'])
+            date = arrow.get(row_vals['Datum'])
         except (TypeError, ValueError):
             date = None
             logging.warning(f"Invalid date in table: {row_vals['Datum']}")
 
         try:
-            s_time = dt.datetime.strptime(row_vals['Zeit'], 'PT%HH%MM%SS')
-            time = dt.time(hour=s_time.hour, minute=s_time.minute)
+            time = arrow.get(row_vals['Zeit'], '[PT]HH[H]mm[M]SS[S]')
         except (TypeError, ValueError) as err:
-            time = dt.time()
+            time = arrow.get(0)
             if isinstance(err, ValueError) and row_vals['Zeit']:
                 logging.warning(f"Invalid time in table: {row_vals['Zeit']}")
         
         e = cls()
-        e.datetime = (dt.datetime.combine(date, time) if date else None)
-        e.location = (row_vals['Halle'] or None)
-        e.league = (row_vals['Liga'] or None)
-        e.opponent = (row_vals['Gegner'] or None)
-        e.scouter1 = (row_vals['Scouter1'] or None)
-        e.scouter2 = (row_vals['Scouter2'] or None)
-        e.scouter3 = (row_vals['Scouter3'] or None)
+        e.datetime = date.replace(hour=time.hour, minute=time.minute, tzinfo=TIMEZONE) if date is not None else None
+        e.location = row_vals['Halle'] or None
+        e.league = row_vals['Liga'] or None
+        e.opponent = row_vals['Gegner'] or None
+        e.scouter1 = row_vals['Scouter1'] or None
+        e.scouter2 = row_vals['Scouter2'] or None
+        e.scouter3 = row_vals['Scouter3'] or None
         e.has_scouters = True
 
         return e
     
     @classmethod
     def from_calendar_event(cls, event):
-        if len(event['start']['dateTime']) == 25:
-            event['start']['dateTime'] = event['start']['dateTime'][:-6]
+        # if len(event['start']['dateTime']) == 25:
+        #     event['start']['dateTime'] = event['start']['dateTime'][:-6]
         e = cls()
-        e.datetime = dt.datetime.fromisoformat(event['start']['dateTime'])
+        e.datetime = arrow.get(event['start']['dateTime']) # , tzinfo=TIMEZONE)
         e.location = event.get('location', None)
         e.league = event.get('summary', '').replace('Scouting ', '') or None
         e.opponent = event.get('description', None)
@@ -112,7 +112,7 @@ class Event:
     @classmethod
     def from_ics(cls, event, team):
         e = cls()
-        e.datetime = event.begin.to(_CONFIG.get('COMMON', 'timezone')).naive
+        e.datetime = arrow.get(event.begin.to(_CONFIG.get('COMMON', 'timezone')))
         location_code = event.name.split(',')[1].strip()
         e.location = ScheduleHandler.arenas.get(location_code, location_code) or None
         e.league = team['league_name']
@@ -130,7 +130,7 @@ class Event:
     @classmethod
     def from_JSON_schedule(cls, event, league_name):
         e = cls()
-        e.datetime = dt.datetime.fromisoformat(f'{event["kickoffDate"]}T{event["kickoffTime"]}')
+        e.datetime = arrow.get(f'{event["kickoffDate"]}T{event["kickoffTime"]}', tzinfo=TIMEZONE)
         location_id = str(event['matchInfo']['spielfeld']['id'])
         e.location = ScheduleHandler.arenas.get(location_id, event['matchInfo']['spielfeld']['bezeichnung'])
         e.league = league_name
@@ -150,10 +150,10 @@ class Event:
         if self.datetime:
             event['start'] = {
                 'dateTime': self.datetime.isoformat(),
-                'timeZone': CalendarHandler.timezone}
+                'timeZone': TIMEZONE}
             event['end'] = {
-                'dateTime': (self.datetime + dt.timedelta(hours=2)).isoformat(),
-                'timeZone': CalendarHandler.timezone}
+                'dateTime': self.datetime.shift(hours=2).isoformat(),
+                'timeZone': TIMEZONE}
         else:
             logging.warning('Can not create calendar event: event has no date')
             return None
@@ -180,7 +180,7 @@ class Event:
     def as_ods_row(self, captions):
         atts = {
             'Datum': (self.datetime.date().isoformat(), 'date'),
-            'Zeit': (self.datetime.strftime('PT%HH%MM%SS'), 'time'),
+            'Zeit': (self.datetime.format('[PT]HH[H]mm[M]SS[S]'), 'time'),
             'Halle': (self.location, 'string'),
             'Liga': (self.league, 'string'),
             'Gegner': (self.opponent, 'string'),
@@ -205,7 +205,7 @@ class Event:
 
     def __str__(self):
         info_list = ((i or '') for i in (
-            self.datetime.strftime('%a, %d.%b %y %H:%M') if self.datetime else None,
+            self.datetime.format() if self.datetime else None,
             self.location, self.league, self.opponent, 
             self.scouter1, self.scouter2, self.scouter3))
         return '{0}, {1}, {2}, {3}, {4}, {5}, {6}'.format(*info_list)
@@ -235,7 +235,7 @@ class Event:
 
 
 class CalendarHandler:
-    timezone = _CONFIG.get('COMMON', 'timezone')
+    # timezone = _CONFIG.get('COMMON', 'timezone')
 
     def __init__(self, id):
         self.__id = id
@@ -265,8 +265,8 @@ class CalendarHandler:
 
         for ev in events:
             cal_ev = ev.as_calendar_event()
-            date = dt.datetime.fromisoformat(cal_ev['start']['dateTime'])
-            now = dt.datetime.now()
+            date = arrow.get(cal_ev['start']['dateTime'])
+            now = arrow.now(TIMEZONE)
             
             act = self.__service.events().insert(
                     calendarId=self.__id,
@@ -292,7 +292,7 @@ class CalendarHandler:
                 new_ev.scouter3 = cal_ev.scouter3
                 new_ev.has_scouters = True
 
-            now = dt.datetime.now()
+            now = arrow.now(TIMEZONE)
             act = self.__service.events().update(
                 calendarId=self.__id,
                 eventId=id,
@@ -311,7 +311,7 @@ class CalendarHandler:
         for id in ids:
             ev = Event.from_calendar_event(
                 self.__service.events().get(calendarId=self.__id, eventId=id).execute())
-            now = dt.datetime.now()
+            now = arrow.now(TIMEZONE)
             act = self.__service.events().delete(
                 calendarId=self.__id,
                 sendUpdates='all' if ev.datetime > now else 'none',
@@ -374,13 +374,13 @@ class TableHandler:
     def add_events(self, events):
         table_events = sorted(
             self.list_events().values(),
-            key=lambda e: (e.datetime or dt.datetime.max))
+            key=lambda e: (e.datetime or arrow.Arrow(9999)))
 
         for ev in events:
             line = self.__captions_row + 1
 
             for te in table_events:
-                if (te.datetime or dt.datetime.max) > (ev.datetime or dt.datetime.max):
+                if (te.datetime or arrow.Arrow(9999)) > (ev.datetime or arrow.Arrow(9999)):
                     break
 
                 line += 1
