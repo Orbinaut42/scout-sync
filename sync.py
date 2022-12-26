@@ -11,8 +11,6 @@ import google
 import ezodf
 from config import config
 
-os.chdir(os.path.dirname(os.path.realpath(__file__)))
-
 # read email adresses and OAuth credentials from environment variables for Replit compatibility
 for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
     config['EMAILS'][name] = email

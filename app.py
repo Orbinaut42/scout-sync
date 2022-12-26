@@ -14,6 +14,10 @@ logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
 app = Flask('scout_sync')
 
+@app.route('/')
+def root():
+    return ''
+
 @app.route('/sync')
 def sync_():
     targets = ['calendar', 'schedule', 'table']
@@ -32,8 +36,8 @@ def sync_():
     return 'OK'
 
 
-@app.route('/')
-def root():
+@app.route('/table')
+def table():
     logging.info(f'Table request from {request.access_route[0]}')
     calendar = CalendarHandler(config.get('CALENDAR', 'id'))
     calendar.connect()

@@ -5,6 +5,6 @@ __pycache__/
 
 .env
 .replit
-.lock
+*.lock
 credentials.json
 scout_sync.cfg
