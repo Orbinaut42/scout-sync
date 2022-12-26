@@ -4,4 +4,7 @@ __pycache__/
 *.code-workspace
 
 .env
+.replit
+.lock
 credentials.json
+scout_sync.cfg

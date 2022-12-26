@@ -1,35 +1,30 @@
 import sys
 import os
 import logging
-import locale
 import requests
 import arrow
 import json
 from argparse import ArgumentParser
-from configparser import ConfigParser
 import googleapiclient.discovery
 import google_auth_oauthlib
 import google
 import ezodf
+from config import config
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-_CONFIG = ConfigParser(
-    converters={'list': lambda line: [int(v) if v.isdigit() else v for v in [w.strip() for w in line.split(',')]]})
-_CONFIG.optionxform = str
-_CONFIG.read('scout_sync.cfg', encoding='utf8')
-
 # read email adresses and OAuth credentials from environment variables for Replit compatibility
 for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
-    _CONFIG['EMAILS'][name] = email
+    config['EMAILS'][name] = email
 
-_CONFIG['CALENDAR']['credentials'] = os.getenv('OAUTH_CREDENTIALS', default='')
+if not config['CALENDAR']['credentials']:
+    config['CALENDAR']['credentials'] = os.getenv('OAUTH_CREDENTIALS', default='')
 
-TIMEZONE = _CONFIG.get('COMMON', 'timezone')
+TIMEZONE = config.get('COMMON', 'timezone')
 SIMULATE = False
 
 logging.basicConfig(
-    filename=_CONFIG.get('COMMON', 'log_file'),
+    filename=config.get('COMMON', 'log_file'),
     format='%(asctime)s %(levelname)s: %(message)s',
     datefmt='%Y-%m-%dT%H:%M:%S',
     level=logging.INFO)
@@ -37,11 +32,9 @@ logging.getLogger('googleapiclient').setLevel(logging.ERROR)
     
 sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.error(exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
 
-locale.setlocale(locale.LC_TIME, '')
-
 class Event:    
-    __emails = {k: v for k, v in _CONFIG.items('EMAILS')}
-    __names = {v: k for k, v in _CONFIG.items('EMAILS')}
+    __emails = {k: v for k, v in config.items('EMAILS')}
+    __names = {v: k for k, v in config.items('EMAILS')}
 
     def __init__(self, datetime=None, location=None, league=None,
                  opponent=None, scouter1=None, scouter2=None, scouter3=None):
@@ -112,7 +105,7 @@ class Event:
     @classmethod
     def from_ics(cls, event, team):
         e = cls()
-        e.datetime = arrow.get(event.begin.to(_CONFIG.get('COMMON', 'timezone')))
+        e.datetime = arrow.get(event.begin.to(TIMEZONE))
         location_code = event.name.split(',')[1].strip()
         e.location = ScheduleHandler.arenas.get(location_code, location_code) or None
         e.league = team['league_name']
@@ -242,7 +235,7 @@ class CalendarHandler:
         self.__service = None
 
     def connect(self):
-        cred_info = _CONFIG.get('CALENDAR', 'credentials')
+        cred_info = config.get('CALENDAR', 'credentials')
         credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(
             json.loads(cred_info) if cred_info else None)
 
@@ -335,7 +328,7 @@ class CalendarHandler:
 
 
 class TableHandler:
-    __captions_row = _CONFIG.getint('TABLE', 'captions_row')
+    __captions_row = config.getint('TABLE', 'captions_row')
 
     def __init__(self, file_name, sheet_name=None):
         self.__file_name = file_name
@@ -446,7 +439,7 @@ class TableHandler:
     
 
 class ScheduleHandler:
-    arenas = dict(_CONFIG['SCHEDULE_ARENAS'])
+    arenas = dict(config['SCHEDULE_ARENAS'])
     __REQUEST_TIMEOUT = 5
 
     def __init__(self, leagues):
@@ -511,10 +504,10 @@ def sync(source, dest):
     logging.info(f"Starting sync from {source} to {dest}")
 
     
-    schedule_leagues = [_CONFIG.getlist('SCHEDULE_LEAGUES', o) for o in _CONFIG['SCHEDULE_LEAGUES'].keys()]
+    schedule_leagues = [config.getlist('SCHEDULE_LEAGUES', o) for o in config['SCHEDULE_LEAGUES'].keys()]
     handler = {
-        'calendar': (CalendarHandler, _CONFIG.get('CALENDAR', 'id')),
-        'table': (TableHandler, _CONFIG.get('TABLE', 'file'), _CONFIG.get('TABLE', 'sheet')),
+        'calendar': (CalendarHandler, config.get('CALENDAR', 'id')),
+        'table': (TableHandler, config.get('TABLE', 'file'), config.get('TABLE', 'sheet')),
         'schedule': (ScheduleHandler, schedule_leagues)}
     source_hdl = handler[source][0](*handler[source][1:])
     dest_hdl = handler[dest][0](*handler[dest][1:])
@@ -566,7 +559,7 @@ def refresh_oauth_credentials():
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(credentials_file, scopes)
     credentials = flow.run_local_server(port=0)
 
-    _CONFIG['CALENDAR']['credentials'] = credentials.to_json()
+    config['CALENDAR']['credentials'] = credentials.to_json()
     return credentials
 
 if __name__ == '__main__':
