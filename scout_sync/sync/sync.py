@@ -1,15 +1,13 @@
-import sys
 import os
 import logging
 import requests
 import arrow
 import json
-from argparse import ArgumentParser
 import googleapiclient.discovery
 import google_auth_oauthlib
 import google
 import ezodf
-from config import config
+from ..config import config
 
 # read email adresses and OAuth credentials from environment variables for Replit compatibility
 for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
@@ -20,15 +18,6 @@ if not config['CALENDAR']['credentials']:
 
 TIMEZONE = config.get('COMMON', 'timezone')
 SIMULATE = False
-
-logging.basicConfig(
-    filename=config.get('COMMON', 'log_file'),
-    format='%(asctime)s %(levelname)s: %(message)s',
-    datefmt='%Y-%m-%dT%H:%M:%S',
-    level=logging.INFO)
-logging.getLogger('googleapiclient').setLevel(logging.ERROR)
-    
-sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.error(exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
 
 class Event:    
     __emails = {k: v for k, v in config.items('EMAILS')}
@@ -76,10 +65,8 @@ class Event:
     
     @classmethod
     def from_calendar_event(cls, event):
-        # if len(event['start']['dateTime']) == 25:
-        #     event['start']['dateTime'] = event['start']['dateTime'][:-6]
         e = cls()
-        e.datetime = arrow.get(event['start']['dateTime']) # , tzinfo=TIMEZONE)
+        e.datetime = arrow.get(event['start']['dateTime'])
         e.location = event.get('location', None)
         e.league = event.get('summary', '').replace('Scouting ', '') or None
         e.opponent = event.get('description', None)
@@ -501,7 +488,6 @@ class ScheduleHandler:
 def sync(source, dest):
     logging.info(f"Starting sync from {source} to {dest}")
 
-    
     schedule_leagues = [config.getlist('SCHEDULE_LEAGUES', o) for o in config['SCHEDULE_LEAGUES'].keys()]
     handler = {
         'calendar': (CalendarHandler, config.get('CALENDAR', 'id')),
@@ -551,33 +537,17 @@ def sync(source, dest):
     logging.info("Sync finished")
     return True
 
+def set_simulate(do_sim):
+    global SIMULATE
+    SIMULATE = do_sim
+
 def refresh_oauth_credentials():
     credentials_file = 'credentials.json'
+
+    credentials_path_file = os.path.join(os.path.dirname(__file__), credentials_file)
     scopes = ['https://www.googleapis.com/auth/calendar.events']
-    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(credentials_file, scopes)
+    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(credentials_path_file, scopes)
     credentials = flow.run_local_server(port=0)
 
     config['CALENDAR']['credentials'] = credentials.to_json()
     return credentials
-
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('--from', dest='source',
-                        choices=['calendar', 'table', 'schedule'])
-    parser.add_argument('--to', dest='dest',
-                        choices=['calendar', 'table'])
-    parser.add_argument('--simulate', action='store_true')
-    parser.add_argument('--refresh-credentials', action='store_true')
-    ARGS = parser.parse_args()
-
-    SIMULATE = ARGS.simulate
-
-    if ARGS.refresh_credentials:
-        credentials = refresh_oauth_credentials()
-        print(credentials.to_json())
-        
-    if ARGS.source and ARGS.dest:
-        sync(ARGS.source, ARGS.dest)
-
-    if not ((ARGS.source and ARGS.dest) or ARGS.refresh_credentials):
-        parser.print_usage()

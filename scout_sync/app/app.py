@@ -1,18 +1,22 @@
+import sys
 import os
 import logging
 import arrow
 from flask import Flask, render_template, request, abort
-from config import config
-from sync import sync, CalendarHandler
+from ..config import config
+from ..sync import sync, CalendarHandler
 
 logging.basicConfig(
     filename=config.get('COMMON', 'log_file'),
     format='%(asctime)s %(levelname)s: %(message)s',
     datefmt='%Y-%m-%dT%H:%M:%S',
     level=logging.INFO)
-logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
-app = Flask('scout_sync')
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
+logging.getLogger('googleapiclient').setLevel(logging.ERROR)
+sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.error(exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
+
+app = Flask('scout_sync', template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 
 @app.route('/')
 def root():
@@ -44,7 +48,3 @@ def table():
     events = calendar.list_events()
 
     return render_template('game_list.html', events=events, today=arrow.now(config.get('COMMON', 'timezone')).date())
-
-if __name__ == '__main__':
-    # debug Flask server
-    app.run(debug=True, host='0.0.0.0', port=os.environ.get('PORT', 3000))
