@@ -23,12 +23,12 @@ app = Flask('scout_sync', template_folder=os.path.join(os.path.dirname(__file__)
 def root():
     return ''
 
-@app.route('/sync')
+@app.post('/sync')
 def sync_():
     targets = ['calendar', 'schedule', 'table']
-    source = request.args.get('from')
-    dest = request.args.get('to')
-    logging.info(f'Sync request from {request.access_route[0]} ({source}, {dest})')
+    source = request.form.get('from')
+    dest = request.form.get('to')
+    logging.info(f'Sync request from {request.access_route[0]} ({source} -> {dest})')
 
     if source not in targets or dest not in targets:
         abort(400, 'invalid "from" or "to" argument')
@@ -43,7 +43,7 @@ def sync_():
         with open(os.path.join(os.path.dirname(__file__), EVENTS_CACHE_FILE), 'wb') as f:
             pickle.dump(events, f)
     
-    return 'OK'
+    return {}, 201
 
 
 @app.route('/table')
@@ -56,4 +56,7 @@ def table():
     
     with open(events_cache_path_file, 'rb') as f:
         events = pickle.load(f)
-        return render_template('game_list.html', events=events, today=arrow.now(config.get('COMMON', 'timezone')).date())
+        return render_template(
+            'game_list.html',
+            events=events,
+            today=arrow.now(config.get('COMMON', 'timezone')).date())

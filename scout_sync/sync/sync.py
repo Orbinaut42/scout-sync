@@ -1,9 +1,9 @@
-import sys
 import os
 import logging
 import requests
 import arrow
 import json
+import time
 import googleapiclient.discovery
 import google_auth_oauthlib
 import google
@@ -497,6 +497,7 @@ class ScheduleHandler:
 def sync(source, dest):
     logging.info(f"Starting sync from {source} to {dest}")
 
+    start_time = time.time()
     schedule_leagues = [config.getlist('SCHEDULE_LEAGUES', o) for o in config['SCHEDULE_LEAGUES'].keys()]
     handler = {
         'calendar': (CalendarHandler, config.get('CALENDAR', 'id')),
@@ -543,7 +544,8 @@ def sync(source, dest):
     dest_hdl.update_events(update_events)
     dest_hdl.delete_events(delete_events)  
 
-    logging.info("Sync finished")
+    end_time = time.time()
+    logging.info(f"Sync finished ({(end_time-start_time):.0f}s)")
 
     if isinstance(dest_hdl, CalendarHandler):
         # return the current list of events
