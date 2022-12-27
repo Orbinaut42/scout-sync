@@ -26,7 +26,7 @@ if not config['CALENDAR']['credentials']:
     config['CALENDAR']['credentials'] = os.getenv('OAUTH_CREDENTIALS', default='')
 
 TIMEZONE = config.get('COMMON', 'timezone')
-SIMULATE = False
+SIMULATE = True
 
 class Event:    
     __emails = {k: v for k, v in config.items('EMAILS')}

@@ -2,8 +2,10 @@ import sys
 import os
 import logging
 import pickle
+import requests
 import arrow
 from flask import Flask, render_template, request, abort
+from apscheduler.schedulers.background import BackgroundScheduler
 from ..config import config
 from ..sync import sync
 
@@ -60,3 +62,21 @@ def table():
             'game_list.html',
             events=events,
             today=arrow.now(config.get('COMMON', 'timezone')).date())
+
+def start_sync_jobs():
+    scheduler = BackgroundScheduler()
+    
+    jobs = [config.getlist('SYNC_JOBS', o) for o in config['SYNC_JOBS'].keys()]
+    port = os.environ.get('PORT', 3000)
+
+    for source, target, interval in jobs:
+        task = lambda source, target: requests.post(f"http://localhost:{port}/sync", data={'from': source, 'to': target})
+        scheduler.add_job(task, 'interval', kwargs = {'source': source, 'target': target}, minutes=interval)
+        logging.info(f"added sync job: {source} -> {target} ({interval}min)")
+
+    scheduler.start()
+
+def app_startup():
+    start_sync_jobs()
+    return app
+ 
