@@ -9,6 +9,15 @@ import google
 import ezodf
 from ..config import config
 
+logging.basicConfig(
+    filename=config.get('COMMON', 'log_file'),
+    format='%(asctime)s %(levelname)s: %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S',
+    level=logging.INFO)
+
+logging.getLogger('googleapiclient').setLevel(logging.ERROR)
+sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.error(exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
+
 # read email adresses and OAuth credentials from environment variables for Replit compatibility
 for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
     config['EMAILS'][name] = email

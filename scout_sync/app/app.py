@@ -13,7 +13,6 @@ logging.basicConfig(
     level=logging.INFO)
 
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
-logging.getLogger('googleapiclient').setLevel(logging.ERROR)
 sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.error(exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
 
 app = Flask('scout_sync', template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
