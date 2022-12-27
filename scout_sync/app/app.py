@@ -16,10 +16,14 @@ logging.basicConfig(
     level=logging.INFO)
 
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
-sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.exception(exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
+logging.getLogger('apscheduler').setLevel(logging.ERROR)
+sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.exception(
+    exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
 
 EVENTS_CACHE_FILE = 'events.cache'
-app = Flask('scout_sync', template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
+app = Flask(
+    'scout_sync',
+    template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 
 @app.route('/')
 def root():
@@ -64,14 +68,17 @@ def table():
             today=arrow.now(config.get('COMMON', 'timezone')).date())
 
 def start_sync_jobs():
-    scheduler = BackgroundScheduler()
-    
+    scheduler = BackgroundScheduler(timzone=config.get('COMMON', 'timezone'))
     jobs = [config.getlist('SYNC_JOBS', o) for o in config['SYNC_JOBS'].keys()]
     port = config.get('COMMON', 'port')
 
     for source, target, interval in jobs:
-        task = lambda source, target: requests.post(f"http://localhost:{port}/sync", data={'from': source, 'to': target})
-        scheduler.add_job(task, 'interval', kwargs = {'source': source, 'target': target}, minutes=interval)
+        task = lambda source, target: requests.post(
+            f"http://localhost:{port}/sync", data={'from': source, 'to': target})
+        scheduler.add_job(
+            task,
+            'interval',
+            kwargs = {'source': source, 'target': target}, minutes=interval)
         logging.info(f"added sync job: {source} -> {target} ({interval}min)")
 
     scheduler.start()

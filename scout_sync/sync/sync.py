@@ -61,7 +61,9 @@ class Event:
                 logging.warning(f"Invalid time in table: {row_vals['Zeit']}")
         
         e = cls()
-        e.datetime = date.replace(hour=time.hour, minute=time.minute, tzinfo=TIMEZONE) if date is not None else None
+        e.datetime = (
+            date.replace(hour=time.hour, minute=time.minute, tzinfo=TIMEZONE) if date is not None
+            else None)
         e.location = row_vals['Halle'] or None
         e.league = row_vals['Liga'] or None
         e.opponent = row_vals['Gegner'] or None
@@ -119,7 +121,9 @@ class Event:
         e = cls()
         e.datetime = arrow.get(f'{event["kickoffDate"]}T{event["kickoffTime"]}', tzinfo=TIMEZONE)
         location_id = str(event['matchInfo']['spielfeld']['id'])
-        e.location = ScheduleHandler.arenas.get(location_id, event['matchInfo']['spielfeld']['bezeichnung'])
+        e.location = ScheduleHandler.arenas.get(
+            location_id,
+            event['matchInfo']['spielfeld']['bezeichnung'])
         e.league = league_name
         e.opponent = event['guestTeam']['teamname']
         e.scouter1 = None
@@ -154,7 +158,8 @@ class Event:
 
         for scouter in [s for s in scouterlist if s and s.strip()]:
             try:
-                event['attendees'].append({"email": self.__emails[scouter], "displayName": scouter})
+                event['attendees'].append(
+                    {"email": self.__emails[scouter], "displayName": scouter})
             except KeyError:
                 logging.warning(f"Unknown scouter name in event at {self.datetime}: {scouter}")
 
@@ -340,7 +345,8 @@ class TableHandler:
             
             for cell in self.__table.row(self.__captions_row):
                 self.__captions.extend(
-                    [cell.value] if cell.value != 'Scouter' else ['Scouter1', 'Scouter2', 'Scouter3'])
+                    [cell.value] if cell.value != 'Scouter'
+                    else ['Scouter1', 'Scouter2', 'Scouter3'])
         
             while self.__captions and not self.__captions[-1]:
                 del self.__captions[-1]
@@ -450,7 +456,9 @@ class ScheduleHandler:
             for league in self.__leagues:
                 # get the complete league schedule
                 league_name, league_id, team_id = league.values()
-                r = s.get(schedule_url.format(league_id=league_id), timeout=ScheduleHandler.__REQUEST_TIMEOUT)
+                r = s.get(
+                    schedule_url.format(league_id=league_id),
+                    timeout=ScheduleHandler.__REQUEST_TIMEOUT)
 
                 if r.status_code == 200:
                     try:
@@ -462,11 +470,16 @@ class ScheduleHandler:
                     logging.error(f"Can not download schedule for league {league_name} ({r.status_code}: {r.reason})")
                     return False
 
-                team_matches = [match['matchId'] for match in league_schedule['data']['matches'] if match['homeTeam']['teamPermanentId'] == team_id]
+                team_matches = [
+                    match['matchId']
+                    for match in league_schedule['data']['matches']
+                    if match['homeTeam']['teamPermanentId'] == team_id]
 
                 # get the details for each match
                 for match_id in team_matches:
-                    r = s.get(match_info_url.format(match_id=match_id), timeout=ScheduleHandler.__REQUEST_TIMEOUT)
+                    r = s.get(
+                        match_info_url.format(match_id=match_id),
+                        timeout=ScheduleHandler.__REQUEST_TIMEOUT)
 
                     if r.status_code == 200:
                         try:
@@ -498,7 +511,9 @@ def sync(source, dest):
     logging.info(f"Starting sync from {source} to {dest}")
 
     start_time = time.time()
-    schedule_leagues = [config.getlist('SCHEDULE_LEAGUES', o) for o in config['SCHEDULE_LEAGUES'].keys()]
+    schedule_leagues = [
+        config.getlist('SCHEDULE_LEAGUES', o)
+        for o in config['SCHEDULE_LEAGUES'].keys()]
     handler = {
         'calendar': (CalendarHandler, config.get('CALENDAR', 'id')),
         'table': (TableHandler, config.get('TABLE', 'file'), config.get('TABLE', 'sheet')),
@@ -562,7 +577,8 @@ def refresh_oauth_credentials():
 
     credentials_path_file = os.path.join(os.path.dirname(__file__), credentials_file)
     scopes = ['https://www.googleapis.com/auth/calendar.events']
-    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(credentials_path_file, scopes)
+    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
+        credentials_path_file, scopes)
     credentials = flow.run_local_server(port=0)
 
     config['CALENDAR']['credentials'] = credentials.to_json()
