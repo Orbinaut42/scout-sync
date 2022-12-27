@@ -33,7 +33,8 @@ def sync_():
     
     try:
         sync(source, dest)
-    except:
+    except Exception as e:
+        logging.error(e)
         abort(500)
     
     return 'OK'
