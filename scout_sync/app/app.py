@@ -67,7 +67,7 @@ def start_sync_jobs():
     scheduler = BackgroundScheduler()
     
     jobs = [config.getlist('SYNC_JOBS', o) for o in config['SYNC_JOBS'].keys()]
-    port = os.environ.get('PORT', 3000)
+    port = config.get('COMMON', 'port')
 
     for source, target, interval in jobs:
         task = lambda source, target: requests.post(f"http://localhost:{port}/sync", data={'from': source, 'to': target})

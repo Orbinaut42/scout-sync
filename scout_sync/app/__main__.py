@@ -1,5 +1,5 @@
-import os
 from .app import app, start_sync_jobs
+from ..config import config
 
 start_sync_jobs()
-app.run(debug=True, host='0.0.0.0', port=os.environ.get('PORT', 3000), use_reloader=False)
+app.run(debug=True, host='0.0.0.0', port=config.get('COMMON', 'port'), use_reloader=False)
