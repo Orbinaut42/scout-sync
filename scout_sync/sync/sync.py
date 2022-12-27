@@ -17,7 +17,6 @@ logging.basicConfig(
     level=logging.INFO)
 
 logging.getLogger('googleapiclient').setLevel(logging.ERROR)
-sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.error(exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
 
 # read email adresses and OAuth credentials from environment variables for Replit compatibility
 for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
@@ -545,6 +544,11 @@ def sync(source, dest):
     dest_hdl.delete_events(delete_events)  
 
     logging.info("Sync finished")
+
+    if isinstance(dest_hdl, CalendarHandler):
+        # return the current list of events
+        return dest_hdl.list_events()
+    
     return True
 
 def set_simulate(do_sim):
