@@ -4,6 +4,7 @@ __pycache__/
 *.code-workspace
 
 .env
+.env_
 .replit
 *.lock
 *.cache

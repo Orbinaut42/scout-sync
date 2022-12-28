@@ -18,18 +18,8 @@ logging.basicConfig(
 
 logging.getLogger('googleapiclient').setLevel(logging.ERROR)
 
-# read email adresses and OAuth credentials from environment variables for Replit compatibility
-for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
-    config['EMAILS'][name] = email
-
-if not config['CALENDAR']['oauth_info']:
-    config['CALENDAR']['oauth_info'] = os.getenv('OAUTH_INFO', default='')
-
-if not config['CALENDAR']['service_account_info']:
-    config['CALENDAR']['service_account_info'] = os.getenv('SERVICE_ACCOUNT_INFO', default='')
-
 TIMEZONE = config.get('COMMON', 'timezone')
-SIMULATE = True
+SIMULATE = config.getboolean('COMMON', 'simulate')
 
 class Event:    
     __emails = {k: v for k, v in config.items('EMAILS')}
@@ -585,11 +575,7 @@ def sync(source, dest):
         return dest_hdl.list_events()
     
     return True
-
-def set_simulate(do_sim):
-    global SIMULATE
-    SIMULATE = do_sim
-
+    
 def refresh_oauth_token():
     """refresh an expired installed app OAuth token"""
     secrets_file = 'secrets.json'
