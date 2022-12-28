@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from .sync import sync, refresh_oauth_credentials, set_simulate
+from .sync import sync, refresh_oauth_token, set_simulate
 
 parser = ArgumentParser()
 parser.add_argument('--from', dest='source',
@@ -13,7 +13,7 @@ ARGS = parser.parse_args()
 set_simulate(ARGS.simulate)
 
 if ARGS.refresh_credentials:
-    credentials = refresh_oauth_credentials()
+    credentials = refresh_oauth_token()
     print(credentials.to_json())
     
 if ARGS.source and ARGS.dest:

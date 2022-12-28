@@ -7,5 +7,5 @@ __pycache__/
 .replit
 *.lock
 *.cache
-credentials.json
+secrets.json
 scout_sync.cfg
