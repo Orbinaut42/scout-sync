@@ -25,6 +25,9 @@ for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
 if not config['CALENDAR']['credentials']:
     config['CALENDAR']['credentials'] = os.getenv('OAUTH_CREDENTIALS', default='')
 
+if not config['CALENDAR']['service_account_info']:
+    config['CALENDAR']['service_account_info'] = os.getenv('SERVICE_ACCOUNT_INFO', default='')
+
 TIMEZONE = config.get('COMMON', 'timezone')
 SIMULATE = True
 
@@ -234,12 +237,17 @@ class CalendarHandler:
         self.__service = None
 
     def connect(self):
-        cred_info = config.get('CALENDAR', 'credentials')
-        credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(
-            json.loads(cred_info) if cred_info else None)
+        # cred_info = config.get('CALENDAR', 'credentials')
+        # credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(
+        #     json.loads(cred_info) if cred_info else None)
 
-        if not credentials.valid and credentials.expired and credentials.refresh_token:
-            credentials.refresh(google.auth.transport.requests.Request())
+        # if not credentials.valid and credentials.expired and credentials.refresh_token:
+        #     credentials.refresh(google.auth.transport.requests.Request())
+
+        service_account_info = config.get('CALENDAR', 'service_account_info')
+        credentials = google.oauth2.service_account.Credentials.from_service_account_info(
+            json.loads(service_account_info) if service_account_info else None
+        )
 
         self.__service = googleapiclient.discovery.build(
             'calendar', 'v3', credentials=credentials, static_discovery=False)
