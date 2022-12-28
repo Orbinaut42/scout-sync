@@ -335,7 +335,7 @@ class CalendarHandler:
 
 
 class TableHandler:
-    __captions_row = config.getint('TABLE', 'captions_row')
+    __captions_row = config.getint('TABLE', 'captions_row', fallback=None)
 
     def __init__(self, file_name, sheet_name=None):
         self.__file_name = file_name
@@ -524,7 +524,7 @@ def sync(source, dest):
         for o in config['SCHEDULE_LEAGUES'].keys()]
     handler = {
         'calendar': (CalendarHandler, config.get('CALENDAR', 'id')),
-        'table': (TableHandler, config.get('TABLE', 'file'), config.get('TABLE', 'sheet')),
+        'table': (TableHandler, config.get('TABLE', 'file'), config.get('TABLE', 'sheet', fallback = None)),
         'schedule': (ScheduleHandler, schedule_leagues)}
     source_hdl = handler[source][0](*handler[source][1:])
     dest_hdl = handler[dest][0](*handler[dest][1:])
