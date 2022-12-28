@@ -12,13 +12,13 @@ config.read(os.path.join(__path__[0], CONFIG_FILE), encoding='utf8')
 
 # read email adresses and calendar auth infos from environment variables for Replit compatibility
 for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
-    if not config.get('EMAILS', name):
+    if not config.has_option('EMAILS', name):
         config['EMAILS'][name] = email
 
-if not config.get('CALENDAR', 'oauth_info'):
+if not config.get('CALENDAR', 'oauth_info', fallback=None):
     config['CALENDAR']['oauth_info'] = os.getenv('OAUTH_INFO', default='')
 
-if not config.get('CALENDAR', 'service_account_info'):
+if not config.get('CALENDAR', 'service_account_info', fallback=None):
     config['CALENDAR']['service_account_info'] = os.getenv('SERVICE_ACCOUNT_INFO', default='')
 
 __all__ = ['config']
