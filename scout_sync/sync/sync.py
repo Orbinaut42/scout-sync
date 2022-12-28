@@ -4,9 +4,9 @@ import requests
 import arrow
 import json
 import time
+import google
 import googleapiclient.discovery
 import google_auth_oauthlib
-import google
 import ezodf
 from ..config import config
 
@@ -18,15 +18,8 @@ logging.basicConfig(
 
 logging.getLogger('googleapiclient').setLevel(logging.ERROR)
 
-# read email adresses and OAuth credentials from environment variables for Replit compatibility
-for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
-    config['EMAILS'][name] = email
-
-if not config['CALENDAR']['credentials']:
-    config['CALENDAR']['credentials'] = os.getenv('OAUTH_CREDENTIALS', default='')
-
 TIMEZONE = config.get('COMMON', 'timezone')
-SIMULATE = True
+SIMULATE = config.getboolean('COMMON', 'simulate')
 
 class Event:    
     __emails = {k: v for k, v in config.items('EMAILS')}
@@ -227,28 +220,43 @@ class Event:
 
 
 class CalendarHandler:
-    # timezone = _CONFIG.get('COMMON', 'timezone')
-
-    def __init__(self, id):
-        self.__id = id
+    def __init__(self, calendar_id):
+        self.__calendar_id = calendar_id
         self.__service = None
 
     def connect(self):
-        cred_info = config.get('CALENDAR', 'credentials')
-        credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(
-            json.loads(cred_info) if cred_info else None)
+        def credentials_from_oauth_info(oauth_info):
+            credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(
+                json.loads(oauth_info) if oauth_info else None)
+            if not credentials.valid and credentials.expired and credentials.refresh_token:
+                credentials.refresh(google.auth.transport.requests.Request())
+            return credentials
+        
+        def credentials_from_service_account_info(account_info):
+            credentials = google.oauth2.service_account.Credentials.from_service_account_info(
+                json.loads(account_info) if account_info else None)
+            return credentials
 
-        if not credentials.valid and credentials.expired and credentials.refresh_token:
-            credentials.refresh(google.auth.transport.requests.Request())
-
+        # prioritise authentication with service account
+        auth_info = {
+            'secrets_info': (
+                credentials_from_oauth_info,
+                config.get('CALENDAR', 'oauth_info')),
+            'service_account_info': (
+                credentials_from_service_account_info,
+                config.get('CALENDAR', 'service_account_info'))}
+        auth_method = (
+            'service_account_info' if auth_info['service_account_info'][1]
+            else 'secrets_info')
+        credentials = auth_info[auth_method][0](auth_info[auth_method][1])
         self.__service = googleapiclient.discovery.build(
             'calendar', 'v3', credentials=credentials, static_discovery=False)
 
         if self.__service:
-            logging.info(f"Connected to calendar: {self.__id}")
+            logging.info(f"Connected to calendar: {self.__calendar_id}")
             return True
         else: 
-            logging.error(f"Connection to calendar with ID {self.__id} failed")
+            logging.error(f"Connection to calendar with ID {self.__calendar_id} failed")
             return False
 
     def add_events(self, events):
@@ -261,7 +269,7 @@ class CalendarHandler:
             now = arrow.now(TIMEZONE)
             
             act = self.__service.events().insert(
-                    calendarId=self.__id,
+                    calendarId=self.__calendar_id,
                     sendUpdates=('all' if date > now else 'none'),
                     body=cal_ev)
             if not SIMULATE:
@@ -275,7 +283,7 @@ class CalendarHandler:
 
         for id in events:
             cal_ev = Event.from_calendar_event(
-                self.__service.events().get(calendarId=self.__id, eventId=id).execute())
+                self.__service.events().get(calendarId=self.__calendar_id, eventId=id).execute())
 
             new_ev = events[id]
             if not new_ev.has_scouters:
@@ -286,7 +294,7 @@ class CalendarHandler:
 
             now = arrow.now(TIMEZONE)
             act = self.__service.events().update(
-                calendarId=self.__id,
+                calendarId=self.__calendar_id,
                 eventId=id,
                 sendUpdates='all' if cal_ev.datetime > now or new_ev.datetime > now else 'none',
                 body=new_ev.as_calendar_event())
@@ -302,10 +310,10 @@ class CalendarHandler:
         
         for id in ids:
             ev = Event.from_calendar_event(
-                self.__service.events().get(calendarId=self.__id, eventId=id).execute())
+                self.__service.events().get(calendarId=self.__calendar_id, eventId=id).execute())
             now = arrow.now(TIMEZONE)
             act = self.__service.events().delete(
-                calendarId=self.__id,
+                calendarId=self.__calendar_id,
                 sendUpdates='all' if ev.datetime > now else 'none',
                 eventId=id)
 
@@ -319,7 +327,7 @@ class CalendarHandler:
             return
 
         events = self.__service.events().list(
-            calendarId=self.__id,
+            calendarId=self.__calendar_id,
             singleEvents=True,
             orderBy='startTime').execute()   
         ev_list = events.get('items', [])
@@ -567,19 +575,15 @@ def sync(source, dest):
         return dest_hdl.list_events()
     
     return True
+    
+def refresh_oauth_token():
+    """refresh an expired installed app OAuth token"""
+    secrets_file = 'secrets.json'
 
-def set_simulate(do_sim):
-    global SIMULATE
-    SIMULATE = do_sim
-
-def refresh_oauth_credentials():
-    credentials_file = 'credentials.json'
-
-    credentials_path_file = os.path.join(os.path.dirname(__file__), credentials_file)
+    secrets_path_file = os.path.join(os.path.dirname(__file__), secrets_file)
     scopes = ['https://www.googleapis.com/auth/calendar.events']
     flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-        credentials_path_file, scopes)
+        secrets_path_file, scopes)
     credentials = flow.run_local_server(port=0)
 
-    config['CALENDAR']['credentials'] = credentials.to_json()
     return credentials
