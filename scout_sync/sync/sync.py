@@ -335,7 +335,7 @@ class CalendarHandler:
 
 
 class TableHandler:
-    __captions_row = config.getint('TABLE', 'captions_row', fallback=None)
+    __captions_row = config.getint('TABLE', 'captions_row', fallback=0)
 
     def __init__(self, file_name, sheet_name=None):
         self.__file_name = file_name
