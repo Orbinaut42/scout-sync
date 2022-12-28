@@ -1,0 +1,31 @@
+[COMMON]
+log_file = scout_sync.log
+timezone = Europe/Berlin
+port = 8000
+simulate = False
+
+[CALENDAR]
+# Google Calendar id and authentication info (to be passed to google.oauth2 credentials)
+# dont use calendar id 'primary' with service account authentication
+id =
+oauth_info =
+service_account_info =
+
+[TABLE]
+# Libre Office Calc Spreadsheet
+file =
+sheet =
+captions_row =
+
+[SCHEDULE_LEAGUES]
+# key = league name, league ID, teamPermanentId
+
+
+[SCHEDULE_ARENAS]
+# arena id = Name
+
+[EMAILS]
+# Name = e@mail.com
+
+[SYNC_JOBS]
+# job = from, to, interval in minutes
