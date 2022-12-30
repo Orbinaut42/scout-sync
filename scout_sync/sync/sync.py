@@ -1,13 +1,10 @@
-import os
 import logging
 import requests
 import arrow
 import json
 import time
-import google
-import googleapiclient.discovery
-import google_auth_oauthlib
 import ezodf
+from .google_api import GoogleCalendarAPI, GoogleSheetsAPI
 from ..config import config
 
 logging.basicConfig(
@@ -53,7 +50,9 @@ class Event:
             logging.warning(f"Invalid time in table: {row_vals['Zeit']}")
         
         e = cls()
-        e.datetime = DocsTableHandler.serial_to_datetime(date) if date is not None else None
+        e.datetime = (
+            GSheetsTableHandler.serial_to_datetime(date, TIMEZONE) if date is not None
+            else None)
         e.location = row_vals['Halle'] or None
         e.league = row_vals['Liga'] or None
         e.opponent = row_vals['Gegner'] or None
@@ -217,7 +216,7 @@ class Event:
         return row
     
     def as_doc_table_row(self, captions):
-        serial = DocsTableHandler.datetime_to_serial(self.datetime)
+        serial = GSheetsTableHandler.datetime_to_serial(self.datetime)
         atts = {
             'Datum': int(serial),
             'Zeit': (serial - int(serial)) or '',
@@ -262,224 +261,32 @@ class Event:
             all(s in event_scouter_list for s in self_scouter_list)])
 
 
-class _GoogleAPI:
-    def __init__(self, resource_id):
-        self.__resource_id = resource_id
-        self.__service = None
-
-    @classmethod
-    def __create_service(self, resource_config_name, api_name, api_version):
-        def credentials_from_oauth_info(oauth_info):
-            credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(
-                json.loads(oauth_info) if oauth_info else None)
-            if not credentials.valid and credentials.expired and credentials.refresh_token:
-                credentials.refresh(google.auth.transport.requests.Request())
-            return credentials
-        
-        def credentials_from_service_account_info(account_info):
-            credentials = google.oauth2.service_account.Credentials.from_service_account_info(
-                json.loads(account_info) if account_info else None)
-            return credentials
-
-        # prioritise authentication with service account
-        auth_info = {
-            'secrets_info': (
-                credentials_from_oauth_info,
-                config.get(resource_config_name, 'oauth_info')),
-            'service_account_info': (
-                credentials_from_service_account_info,
-                config.get(resource_config_name, 'service_account_info'))}
-        auth_method = (
-            'service_account_info' if auth_info['service_account_info'][1]
-            else 'secrets_info')
-
-        credentials = auth_info[auth_method][0](auth_info[auth_method][1])
-        
-        self.__service = googleapiclient.discovery.build(
-            api_name, api_version, credentials=credentials, static_discovery=False)
 
 
-class _GoogleSheetsAPI(_GoogleAPI):
-    def __init__(self, resource_id, sheet_name, sheet_id):
-        super.__init__(resource_id)
-        self.__sheet_name = sheet_name
-        self.__sheet_id = sheet_id
-
-    @classmethod
-    def serial_to_datetime(cls, serial):
-        return arrow.get('1899-12-30', tzinfo=TIMEZONE).shift(days=serial)
-
-    @classmethod
-    def datetime_to_serial(cls, datetime):
-        return (datetime - arrow.get('1899-12-30')).total_seconds() / (60 * 60 * 24)
-    
-    @classmethod
-    def insert_row_request(cls, row, sheet_id):
-        return {
-            'insertDimension': {
-                'inheritFromBefore': True,
-                'range': {
-                    'sheetId': sheet_id,
-                    'dimension': 'ROWS',
-                    'startIndex': row-1,
-                    'endIndex': row
-                },
-            }
-        }
-
-    @classmethod
-    def update_row_request(cls, row, data, sheet_id):
-        return {
-            'updateCells': {
-                'start': {
-                    'sheetId': sheet_id,
-                    'rowIndex': row-1
-                },
-                'rows': [
-                    {
-                        'values': [
-                            {
-                                'userEnteredValue': {
-                                    'numberValue' if isinstance(v, (int, float))
-                                    else 'stringValue': v
-                                }
-                            } for v in data
-                        ]
-                    }
-                ],
-                'fields': 'userEnteredValue'
-            }
-        }
-    
-    @classmethod
-    def delete_row_request(cls, row, sheet_id):
-        return {
-            'deleteDimension': {
-                'range': {
-                    'sheetId': sheet_id,
-                    'dimension': 'ROWS',
-                    'startIndex': row-1,
-                    'endIndex': row
-                }
-            }
-        }
-
-    def __batch_update(self, requests):
-        body = {'requests': requests}
-        act = self.__service.spreadsheets().batchUpdate(
-            spreadsheetId=self.__resource_id,
-            body=body)
-
-        if not SIMULATE:
-            act.execute()
-    
-    def __range_descriptor(self, start, end=None):
-        if end is None:
-            end = start
-        
-        sheet_descriptor = f"{self.__sheet_name}!" if self.__sheet_name is not None else ''
-        if isinstance(start, tuple):
-            return f"{sheet_descriptor}{start[0]}C{start[1]}:R{end[0]}C{end[1]}"
-        else:
-            return f"{sheet_descriptor}{start}:{end}"
-
-    def __connect_to_service(self):
-        _GoogleAPI.__create_service('DOCS_TABLE', 'sheets', 'v4')
-        # test the connection
-        self.__service.spreadsheets().get(self.__resource_id).execute()
-    
-    def get_range(self, range_start, range_end=None, major_dimension='ROWS', dims=0):
-        values = self.__service.spreadsheets().values().get(
-            spreadsheetId=self.__resource_id,
-            range=self.__range_descriptor(range_start, range_end),
-            valueRenderOption='UNFORMATTED_VALUE',
-            majorDimension=major_dimension).execute()['values']
-    	
-        if dims==0:
-            return values[0][0]
-        elif dims==1:
-            return values[0]
-        else:
-            return values
-
-    def insert_rows(self, rows_data):
-        requests = []
-        for row, data in sorted(rows_data, key=lambda r: r[0], reverse=True):
-            requests.extend([
-                _GoogleSheetsAPI.insert_row_request(row, self.__sheet_id),
-                _GoogleSheetsAPI.update_row_request(row, data, self.__sheet_id)])
-        
-        self.__batch_update(requests)
-    
-    def update_rows(self, rows_data):
-        requests = [
-            _GoogleSheetsAPI.update_row_request(row, data, self.__sheet_id)
-            for row, data in rows_data]
-        self.__batch_update(requests)
-    
-    def delete_rows(self, rows):
-        requests = [
-            _GoogleSheetsAPI.delete_row_request(row, self.__sheet_id)
-            for row in sorted(rows, reverse=True)]
-        self.__batch_update(requests)       
-
-
-class CalendarHandler:
+class CalendarHandler(GoogleCalendarAPI):
     def __init__(self, calendar_id):
-        self.__calendar_id = calendar_id
-        self.__service = None
+        super().__init__(calendar_id, TIMEZONE, SIMULATE)
 
     def connect(self):
-        def credentials_from_oauth_info(oauth_info):
-            credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(
-                json.loads(oauth_info) if oauth_info else None)
-            if not credentials.valid and credentials.expired and credentials.refresh_token:
-                credentials.refresh(google.auth.transport.requests.Request())
-            return credentials
-        
-        def credentials_from_service_account_info(account_info):
-            credentials = google.oauth2.service_account.Credentials.from_service_account_info(
-                json.loads(account_info) if account_info else None)
-            return credentials
-
-        # prioritise authentication with service account
-        auth_info = {
-            'secrets_info': (
-                credentials_from_oauth_info,
-                config.get('CALENDAR', 'oauth_info')),
-            'service_account_info': (
-                credentials_from_service_account_info,
-                config.get('CALENDAR', 'service_account_info'))}
-        auth_method = (
-            'service_account_info' if auth_info['service_account_info'][1]
-            else 'secrets_info')
-        credentials = auth_info[auth_method][0](auth_info[auth_method][1])
-        self.__service = googleapiclient.discovery.build(
-            'calendar', 'v3', credentials=credentials, static_discovery=False)
-
-        if self.__service:
-            logging.info(f"Connected to calendar: {self.__calendar_id}")
-            return True
-        else: 
-            logging.error(f"Connection to calendar with ID {self.__calendar_id} failed")
+        try:
+            self.__connect_to_service()
+        except Exception as e:
+            logging.error(f"Connection to calendar with ID {self.__calendar_id} failed: {e}")
             return False
+
+        logging.info(f"Connected to calendar: {self.__calendar_id}")
+        return True
 
     def add_events(self, events):
         if not self.__service:
             return
 
         for ev in events:
-            cal_ev = ev.as_calendar_event()
-            date = arrow.get(cal_ev['start']['dateTime'])
-            now = arrow.now(TIMEZONE)
-            
-            act = self.__service.events().insert(
-                    calendarId=self.__calendar_id,
-                    sendUpdates=('all' if date > now else 'none'),
-                    body=cal_ev)
-            if not SIMULATE:
-                act.execute()
-            
+            if not ev.datetime:
+                logging.warning(f"Can not add event to calendar {ev}: event has no date")
+                continue
+
+            self.__insert_event(ev.as_calendar_event())
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Added event to calendar:\n\t\t{ev}")
 
     def update_events(self, events):
@@ -487,63 +294,42 @@ class CalendarHandler:
             return
 
         for id in events:
-            cal_ev = Event.from_calendar_event(
-                self.__service.events().get(calendarId=self.__calendar_id, eventId=id).execute())
-
+            cal_ev = self.__get_single_event(id)
+            old_ev = Event.from_calendar_event(cal_ev)
             new_ev = events[id]
             if not new_ev.has_scouters:
-                new_ev.scouter1 = cal_ev.scouter1
-                new_ev.scouter2 = cal_ev.scouter2
-                new_ev.scouter3 = cal_ev.scouter3
+                new_ev.scouter1 = old_ev.scouter1
+                new_ev.scouter2 = old_ev.scouter2
+                new_ev.scouter3 = old_ev.scouter3
                 new_ev.has_scouters = True
 
-            now = arrow.now(TIMEZONE)
-            act = self.__service.events().update(
-                calendarId=self.__calendar_id,
-                eventId=id,
-                sendUpdates='all' if cal_ev.datetime > now or new_ev.datetime > now else 'none',
-                body=new_ev.as_calendar_event())
-
-            if not SIMULATE:
-                act.execute()
-
-            logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in calendar:\n\t-\t{cal_ev}\n\t+\t{new_ev}")
+            self.__update_event(id, cal_ev, new_ev.to_calendar_event())
+            logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in calendar:\n\t-\t{old_ev}\n\t+\t{new_ev}")
 
     def delete_events(self, ids):
         if not self.__service:
             return
         
         for id in ids:
-            ev = Event.from_calendar_event(
-                self.__service.events().get(calendarId=self.__calendar_id, eventId=id).execute())
-            now = arrow.now(TIMEZONE)
-            act = self.__service.events().delete(
-                calendarId=self.__calendar_id,
-                sendUpdates='all' if ev.datetime > now else 'none',
-                eventId=id)
+            cal_ev = self.__get_single_event(id)
+            old_ev = Event.from_calendar_event(cal_ev)
 
-            if not SIMULATE:
-                act.execute()
-
-            logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Deleted event in calendar:\n\t\t{ev}")
+            self.__delete_event(id, cal_ev)
+            logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Deleted event in calendar:\n\t\t{old_ev}")
 
     def list_events(self):
         if not self.__service:
             return
-
-        events = self.__service.events().list(
-            calendarId=self.__calendar_id,
-            singleEvents=True,
-            orderBy='startTime').execute()   
-        ev_list = events.get('items', [])
+  
+        ev_list = self.__get_all_events()
         return {ev['id']: Event.from_calendar_event(ev) for ev in ev_list}
 
 
-class DocsTableHandler(_GoogleSheetsAPI):
-    __captions_row = int(config.get('DOCS_TABLE', 'captions_row', fallback=None) or 0)
+class GSheetsTableHandler(GoogleSheetsAPI):
+    __captions_row = int(config.get('GSHEETS_TABLE', 'captions_row', fallback=None) or 0)
 
     def __init__(self, spredsheet_id, sheet_name=None, sheet_id=0):
-        super.__init__(spredsheet_id, sheet_name, sheet_id)
+        super.__init__(spredsheet_id, sheet_name, sheet_id, TIMEZONE, SIMULATE)
         self.__captions = []
         self.__index = []
         self.__ids = []
@@ -551,7 +337,7 @@ class DocsTableHandler(_GoogleSheetsAPI):
     def connect(self):
         try:
             self.__connect_to_service()
-            for cell in self.get_range(self.__captions_row, dims=1):
+            for cell in self.__get_range(self.__captions_row, dims=1):
                 self.__captions.extend(
                     [cell] if cell != 'Scouter'
                     else ['Scouter1', 'Scouter2', 'Scouter3'])
@@ -576,21 +362,25 @@ class DocsTableHandler(_GoogleSheetsAPI):
         return True            
     
     def add_events(self, events):
+        if not self.__service:
+            return
+
         insert_events = []
         for ev in events:
             for id, row in self.__index:
                 date_entry = row[self.__captions.index('Datum')]
                 time_entry = row[self.__captions.index('Zeit')]
-                date = _GoogleSheetsAPI.serial_to_datetime(
+                date = GoogleSheetsAPI.serial_to_datetime(
                     (date_entry if isinstance(date_entry, (float, int)) else 0) +
-                    (time_entry if isinstance(time_entry, (float, int)) else 0))
+                    (time_entry if isinstance(time_entry, (float, int)) else 0),
+                    self.__timezone)
                 if date > (ev.datetime or arrow.Arrow(9999)):
                     break
             
             row_no = self.__ids.index(id)
             insert_events.append((row_no, ev.as_docs_table_row(self.__captions)))
         
-        self.insert_rows(insert_events)
+        self.__insert_rows(insert_events)
         for row_no, event in insert_events:
             new_id = max((self.__index.keys() or [-1])) + 1
             self.__index[new_id] = event
@@ -600,14 +390,24 @@ class DocsTableHandler(_GoogleSheetsAPI):
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Added event to table:\n\t\t{ev}")
 
     def update_events(self, events):
+        if not self.__service:
+            return
+
         update_evs = [{
             'id': id,
             'row': self.__ids[id],
             'old_event': Event.from_docs_table_row(self.__index[id], self.__captions),
             'new_event': event}
             for id, event in events.items()]
+        
+        for event in update_evs:
+            if not event['new_event'].has_scouters:
+                event['new_event'].scouter1 = event['old_event'].scouter1
+                event['new_event'].scouter2 = event['old_event'].scouter1
+                event['new_event'].scouter3 = event['old_event'].scouter1
+                event['new_event'].has_scouters = True
 
-        self.update_rows([
+        self.__update_rows([
             (ev['row'], ev['new_event'].as_docs_table_row(self.__captions))
             for ev in update_evs])
 
@@ -616,7 +416,10 @@ class DocsTableHandler(_GoogleSheetsAPI):
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in table:\n\t-\t{ev['old_event']}\n\t+\t{ev['new_event']}")
             
     def delete_events(self, event_ids):
-        self.delete_rows([self.__ids[id] for id in event_ids])
+        if not self.__service:
+            return
+
+        self.__delete_rows([self.__ids[id] for id in event_ids])
 
         for id in event_ids:
             event = Event.from_docs_table_row(self.__index[id])
@@ -624,7 +427,10 @@ class DocsTableHandler(_GoogleSheetsAPI):
             self.__ids.remove(id)
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Deleted event in table:\n\t\t{event}")
         
-    def list_events(self):    
+    def list_events(self):
+        if not self.__service:
+            return
+
         events = {}
 
         for i, row in self.__index.items():
@@ -636,8 +442,8 @@ class DocsTableHandler(_GoogleSheetsAPI):
         return events
 
 
-class TableHandler:
-    __captions_row = int(config.get('TABLE', 'captions_row', fallback=None) or 0)
+class OdsTableHandler:
+    __captions_row = int(config.get('ODS_TABLE', 'captions_row', fallback=None) or 0)
 
     def __init__(self, file_name, sheet_name=None):
         self.__file_name = file_name
@@ -821,12 +627,27 @@ def sync(source, dest):
     logging.info(f"Starting sync from {source} to {dest}")
 
     start_time = time.time()
+    use_table = config.get('COMMON', 'use_table')
+    if use_table == 'ods':
+        table_handler = (
+            OdsTableHandler,
+            config.get('ODS_TABLE', 'file'),
+            config.get('ODS_TABLE', 'sheet', fallback = None))
+    elif use_table == 'gsheets':
+        table_handler = (
+            GSheetsTableHandler,
+            config.get('GSHEETS_TABLE', 'spreadsheet_id'),
+            config.get('GSHEETS_TABLE', 'sheet_name', fallback = None),
+            config.get('GSHEETS_TABLE', 'sheet_id', fallback = None))
+    else:
+        raise RuntimeError(f"Invalid config entry for COMMON/use_table: {use_table}")
+
     schedule_leagues = [
         config.getlist('SCHEDULE_LEAGUES', o)
         for o in config['SCHEDULE_LEAGUES'].keys()]
     handler = {
         'calendar': (CalendarHandler, config.get('CALENDAR', 'id')),
-        'table': (TableHandler, config.get('TABLE', 'file'), config.get('TABLE', 'sheet', fallback = None)),
+        'table': table_handler,
         'schedule': (ScheduleHandler, schedule_leagues)}
     source_hdl = handler[source][0](*handler[source][1:])
     dest_hdl = handler[dest][0](*handler[dest][1:])
@@ -861,9 +682,8 @@ def sync(source, dest):
                     delete_events.remove(id)
                 break
         else:
-            if ev.datetime or not isinstance(dest_hdl, CalendarHandler):
-                if ev not in new_events:
-                    new_events.append(ev)
+            if ev not in new_events:
+                new_events.append(ev)
 
     dest_hdl.add_events(new_events)
     dest_hdl.update_events(update_events)
@@ -877,17 +697,3 @@ def sync(source, dest):
         return dest_hdl.list_events()
     
     return True
-    
-def refresh_oauth_token():
-    """refresh an expired installed app OAuth token"""
-    secrets_file = 'secrets.json'
-
-    secrets_path_file = os.path.join(os.path.dirname(__file__), secrets_file)
-    scopes = [
-        'https://www.googleapis.com/auth/calendar.events',
-        'https://www.googleapis.com/auth/spreadsheets']
-    flow = google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file(
-        secrets_path_file, scopes)
-    credentials = flow.run_local_server(port=0)
-
-    return credentials

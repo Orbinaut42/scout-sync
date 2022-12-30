@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
-from .sync import sync, refresh_oauth_token
+from .sync import sync
+from .google_api import refresh_oauth_token
 
 parser = ArgumentParser()
 parser.add_argument('--from', dest='source',
