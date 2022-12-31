@@ -2,16 +2,27 @@
 log_file = scout_sync.log
 timezone = Europe/Berlin
 port = 8000
+use_table = gsheets
 simulate = False
 
+[GOOGLE_API]
+# Google API authentication information (to be passed to google.oauth2 credentials)
+oauth_info = 
+service_account_info = 
+
 [CALENDAR]
-# Google Calendar id and authentication info (to be passed to google.oauth2 credentials)
+# Google Calendar ID
 # dont use calendar id 'primary' with service account authentication
 id =
-oauth_info =
-service_account_info =
 
-[TABLE]
+[GSHEETS_TABLE]
+# Google Sheets spreadsheet and sheet ID
+id = 
+sheet_name =
+sheet_id =
+captions_row =
+
+[ODS_TABLE]
 # Libre Office Calc Spreadsheet
 file =
 sheet =
@@ -19,7 +30,6 @@ captions_row =
 
 [SCHEDULE_LEAGUES]
 # key = league name, league ID, teamPermanentId
-
 
 [SCHEDULE_ARENAS]
 # arena id = Name
