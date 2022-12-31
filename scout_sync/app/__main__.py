@@ -1,3 +1,5 @@
+"""Starts the app with the Flask debug server"""
+
 from .app import app, start_sync_jobs
 from ..config import config
 

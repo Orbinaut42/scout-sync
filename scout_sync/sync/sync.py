@@ -18,7 +18,9 @@ logging.getLogger('googleapiclient').setLevel(logging.ERROR)
 TIMEZONE = config.get('COMMON', 'timezone')
 SIMULATE = config.getboolean('COMMON', 'simulate')
 
-class Event:    
+class Event:
+    """Manages conversion between different event representation formats (JSON schedule, Google Calendar, Google Spreadsheet, ODS Table"""
+
     __emails = {k: v for k, v in config.items('EMAILS')}
     __names = {v: k for k, v in config.items('EMAILS')}
 
@@ -35,6 +37,7 @@ class Event:
 
     @classmethod
     def from_gsheets_table_row(cls, row, captions):
+        """Create an event from a Google Sheets row"""
         row_vals = {cap: value for value, cap in zip(row, captions) if cap}
         if row_vals['Zeit'] == '':
             row_vals['Zeit'] = 0
@@ -67,6 +70,8 @@ class Event:
 
     @classmethod
     def from_ods_table_row(cls, row, captions):
+        """Create an event from a ODS table row"""
+
         row_vals = {cap: cell.value for cell, cap in zip(row, captions) if cap}
             
         try:
@@ -98,6 +103,8 @@ class Event:
     
     @classmethod
     def from_calendar_event(cls, event):
+        """Create an event from a Google Calendar event"""
+
         e = cls()
         e.datetime = arrow.get(event['start']['dateTime'])
         e.location = event.get('location', None)
@@ -122,6 +129,8 @@ class Event:
 
     @classmethod
     def from_ics(cls, event, team):
+        """Create an event from a ics object"""
+
         e = cls()
         e.datetime = arrow.get(event.begin.to(TIMEZONE))
         location_code = event.name.split(',')[1].strip()
@@ -140,6 +149,8 @@ class Event:
     
     @classmethod
     def from_JSON_schedule(cls, event, league_name):
+        """Create an event from a JSON object (DBB schedule)"""
+
         e = cls()
         e.datetime = arrow.get(f'{event["kickoffDate"]}T{event["kickoffTime"]}', tzinfo=TIMEZONE)
         location_id = str(event['matchInfo']['spielfeld']['id'])
@@ -159,6 +170,8 @@ class Event:
         return e
 
     def as_calendar_event(self):
+        """create a representation of the event, that can be passed to the Google Calendar API"""
+
         event = {}
         if self.datetime:
             event['start'] = {
@@ -192,6 +205,8 @@ class Event:
         return event
     
     def as_gsheets_table_row(self, captions):
+        """create a representation of the event, that can be passed to the Google Sheets API"""
+
         serial = GSheetsTableHandler.datetime_to_serial(self.datetime)
         atts = {
             'Datum': int(serial),
@@ -207,6 +222,8 @@ class Event:
         return values
 
     def as_ods_table_row(self, captions):
+        """create a representation of the event, that can be inserted into a ODS table"""
+
         atts = {
             'Datum': (self.datetime.date().isoformat(), 'date'),
             'Zeit': (self.datetime.format('[PT]HH[H]mm[M]SS[S]'), 'time'),
@@ -240,6 +257,9 @@ class Event:
         return '{0}, {1}, {2}, {3}, {4}, {5}, {6}'.format(*info_list)
 
     def is_same(self, event):
+        """Compare two Event objects
+        Returns True if date (not time), league and opponent are equal"""
+
         self_date = self.datetime.date() if self.datetime else None
         event_date = event.datetime.date() if event.datetime else None
         return all([
@@ -248,6 +268,9 @@ class Event:
             self.opponent == event.opponent])
 
     def __eq__(self, event):
+        """Compare two Event objects
+        Returns True if all attributes are equal"""
+
         self_scouter_list = [self.scouter1, self.scouter2, self.scouter3]
         event_scouter_list = [event.scouter1, event.scouter2, event.scouter3]
 
@@ -264,6 +287,8 @@ class Event:
 
 
 class CalendarHandler(GoogleCalendarAPI):
+    """Manages the communtcation with the Google Calendar API"""
+
     def __init__(self, calendar_id):
         super().__init__(calendar_id, TIMEZONE, SIMULATE)
 
@@ -326,13 +351,15 @@ class CalendarHandler(GoogleCalendarAPI):
 
 
 class GSheetsTableHandler(GoogleSheetsAPI):
+    """Manages the communication with the Google Calendar API"""
+
     __captions_row = int(config.get('GSHEETS_TABLE', 'captions_row', fallback=None) or 0)
 
     def __init__(self, spredsheet_id, sheet_name, sheet_id):
         super().__init__(spredsheet_id, sheet_name, sheet_id, TIMEZONE, SIMULATE)
         self.__captions = []
         self.__index = {}
-        self.__ids = []
+        self.__ids = [] # keeps track of which event is in which row of the sheet
     
     def connect(self):
         try:
@@ -385,6 +412,7 @@ class GSheetsTableHandler(GoogleSheetsAPI):
             
             insert_events.append((row_no, ev.as_gsheets_table_row(self.__captions)))
 
+        # sort by date in reverse order, so later insertions will be in the correct row
         insert_events.sort(
             key=lambda e: e[1][date_index]+(e[1][time_index] or 0),
             reverse=True)
@@ -428,6 +456,7 @@ class GSheetsTableHandler(GoogleSheetsAPI):
             return
 
         delete_events = [self.__ids.index(id) for id in event_ids]
+        # sort by date in reverse order, so later deletions will be in the correct row
         delete_events.sort(reverse=True)
         self._delete_rows(delete_events)
 
@@ -453,6 +482,8 @@ class GSheetsTableHandler(GoogleSheetsAPI):
 
 
 class OdsTableHandler:
+    """Manages the ODS table"""
+
     __captions_row = int(config.get('ODS_TABLE', 'captions_row', fallback=None) or 0)
 
     def __init__(self, file_name, sheet_name=None):
@@ -565,6 +596,8 @@ class OdsTableHandler:
     
 
 class ScheduleHandler:
+    "manages downloads from the DBB game schedule database"
+
     arenas = dict(config['SCHEDULE_ARENAS'])
     __REQUEST_TIMEOUT = 5
 
@@ -634,9 +667,15 @@ class ScheduleHandler:
 
 
 def sync(source, dest):
+    """Start the syncronisation from 'source' to 'dest'
+    Allowed values for source are: schedule, calendar, table
+    Allowed values for destination are: calendar, table"""
+
     logging.info(f"Starting sync from {source} to {dest}")
 
     start_time = time.time()
+
+    # choose the correct handler for the 'table' target according to the 'use_table' config option 
     use_table = config.get('COMMON', 'use_table')
     if use_table == 'ods':
         table_handler = (
@@ -672,6 +711,8 @@ def sync(source, dest):
     update_events = {}
     delete_events = list(dest_events.keys())
 
+    # determine which events to add, delete and update
+    # if the source is the schedule, ignore leagues, that are not present in the leage definitions (to allow custom events)
     if isinstance(source_hdl, ScheduleHandler):
         leagues = [l[0] for l in schedule_leagues]
 

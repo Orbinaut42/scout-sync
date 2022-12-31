@@ -7,13 +7,22 @@ import arrow
 from ..config import config
 
 class _GoogleAPI:
+    """Base class for the Google API functionality"""
+    
     def __init__(self, resource_id, timezone, simulate):
+        """resource_id -> string Id of the calendar, spreadsheet, ...
+        timezone -> string timezone for calendar event creation
+        simulate -> bool whether the syncronisations should only be simulated (for testing purposes)"""
         self._resource_id = resource_id
         self._service = None
         self.__timezone = timezone
         self.__simulate = simulate
 
     def create_service(self, api_name, api_version):
+        """Creates the Google API service ressource
+        api_name -> string
+        api_version -> string"""
+
         def credentials_from_oauth_info(oauth_info):
             credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(
                 json.loads(oauth_info) if oauth_info else None)
@@ -44,16 +53,22 @@ class _GoogleAPI:
 
 
 class GoogleCalendarAPI(_GoogleAPI):
+    """Convenience class for Google Calendar API functionalities"""
+
     def __init__(self, calendar_id, timezone, simulate=False):
         super().__init__(calendar_id,  timezone, simulate)
 
     def _connect_to_service(self):
+        """Creates the service and tests the connection"""
+
         self.create_service('calendar', 'v3')
 
         # test the connection
         self._service.calendars().get(calendarId=self._resource_id).execute()
     
     def _get_all_events(self):
+        """Returns al list of all events in the calendar"""
+
         events = self._service.events().list(
             calendarId=self._resource_id,
             singleEvents=True,
@@ -62,6 +77,8 @@ class GoogleCalendarAPI(_GoogleAPI):
         return events.get('items', [])
     
     def _get_single_event(self, id):
+        """Returns the specified event"""
+
         event = self._service.events().get(
             calendarId=self._resource_id,
             eventId=id).execute()
@@ -69,17 +86,23 @@ class GoogleCalendarAPI(_GoogleAPI):
         return event
     
     def _insert_event(self, event):
-            date = arrow.get(event['start']['dateTime'])
-            now = arrow.now(self._GoogleAPI__timezone)
-            act = self._service.events().insert(
-                calendarId=self._resource_id,
-                body=event,
-                sendUpdates=('all' if date > now else 'none'))
+        """Inserts the event into the calendar
+        the event should be passed as a dict"""
 
-            if not self._GoogleAPI__simulate:
-                act.execute()
-    
+        date = arrow.get(event['start']['dateTime'])
+        now = arrow.now(self._GoogleAPI__timezone)
+        act = self._service.events().insert(
+            calendarId=self._resource_id,
+            body=event,
+            sendUpdates=('all' if date > now else 'none'))
+
+        if not self._GoogleAPI__simulate:
+            act.execute()
+
     def _update_event(self, id, old_event, new_event):
+        """Updates the event with the specified ID
+        the events should be passed as a dicts"""
+
         old_date = arrow.get(old_event['start']['dateTime'])
         new_date = arrow.get(new_event['start']['dateTime'])
         now = arrow.now(self._GoogleAPI__timezone)
@@ -93,6 +116,8 @@ class GoogleCalendarAPI(_GoogleAPI):
             act.execute()
     
     def _delete_event(self, id, event):
+        """Deletes the specified event"""
+
         date = arrow.get(event['start']['dateTime'])
         now = arrow.now(self._GoogleAPI__timezone)
         act = self._service.events().delete(
@@ -104,6 +129,8 @@ class GoogleCalendarAPI(_GoogleAPI):
             act.execute()
 
 class GoogleSheetsAPI(_GoogleAPI):
+    """Convenience class for Google Sheets API functionalities"""
+
     def __init__(self, spreadsheet_id, sheet_name, sheet_id, timezone, simulate=False):
         super().__init__(spreadsheet_id, timezone, simulate)
         self.__sheet_name = sheet_name or None
@@ -111,6 +138,7 @@ class GoogleSheetsAPI(_GoogleAPI):
 
     @classmethod
     def serial_to_datetime(cls, serial, timezone):
+        """Converts"""
         return arrow.get('1899-12-30', tzinfo=timezone).shift(days=serial)
 
     @classmethod
@@ -169,12 +197,17 @@ class GoogleSheetsAPI(_GoogleAPI):
         }
 
     def _connect_to_service(self):
+        """Creates the service and tests the connection"""
+
         self.create_service('sheets', 'v4')
 
         # test the connection
         self._service.spreadsheets().get(spreadsheetId=self._resource_id).execute()
     
     def _get_range(self, range_start, range_end=None, major_dimension='ROWS', dims=0):
+        """Get the cell values in the specified range
+        'dims' specifies the number of dimenstions of the return array"""
+
         values = self._service.spreadsheets().values().get(
             spreadsheetId=self._resource_id,
             range=self.__range_descriptor(range_start, range_end),
@@ -189,6 +222,10 @@ class GoogleSheetsAPI(_GoogleAPI):
             return values
 
     def _insert_rows(self, rows_data):
+        """Inserts rows into the sheet
+        'rows_data' should be al list of tuples where each tuple is of the form:
+        (row_no (zero-based), [cell values])"""
+
         requests = []
         for row, data in rows_data:
             requests.extend([
@@ -198,12 +235,18 @@ class GoogleSheetsAPI(_GoogleAPI):
         self.__batch_update(requests)
     
     def _update_rows(self, rows_data):
+        """Updates the contend of the specified rows
+        'rows_data' should be al list of tuples where each tuple is of the form:
+        (row_no (zero-based), [cell values])"""
+
         requests = [
             GoogleSheetsAPI.__update_row_request(row, data, self.__sheet_id)
             for row, data in rows_data]
         self.__batch_update(requests)
     
     def _delete_rows(self, rows):
+        """Deletes the specified rows (zero-based)"""
+
         requests = [
             GoogleSheetsAPI.__delete_row_request(row, self.__sheet_id)
             for row in rows]
@@ -219,6 +262,9 @@ class GoogleSheetsAPI(_GoogleAPI):
             act.execute()
     
     def __range_descriptor(self, start, end=None):
+        """Returns a range descriptor string
+        If 'start' end 'end' are tuples, the returnd string is of the 'R1C1' format, else of the 'A1' format"""
+
         if end is None:
             end = start
         
@@ -231,6 +277,7 @@ class GoogleSheetsAPI(_GoogleAPI):
 
 def refresh_oauth_token():
     """refresh an expired installed app OAuth token"""
+
     secrets_file = 'secrets.json'
 
     secrets_path_file = os.path.join(os.path.dirname(__file__), secrets_file)

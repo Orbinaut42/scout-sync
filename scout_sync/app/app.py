@@ -27,10 +27,17 @@ app = Flask(
 
 @app.route('/')
 def root():
+    """ping access point"""
+
     return ''
 
 @app.post('/sync')
 def sync_():
+    """POST access point for sync requests
+    
+    Request data should be:
+    {from: [source], to: [target]}"""
+
     targets = ['calendar', 'schedule', 'table']
     source = request.form.get('from')
     dest = request.form.get('to')
@@ -51,9 +58,12 @@ def sync_():
     
     return {}, 201
 
-
 @app.route('/table')
 def table():
+    """GET access point for the current game table
+    Returns a HTML document witch the table, created from the events stored in the events cache file,
+    created by the last sync request"""
+
     logging.info(f'Table request from {request.access_route[0]}')
 
     events_cache_path_file = os.path.join(os.path.dirname(__file__), EVENTS_CACHE_FILE)
@@ -68,6 +78,8 @@ def table():
             today=arrow.now(config.get('COMMON', 'timezone')).date())
 
 def start_sync_jobs():
+    """start a scheduler with the syncronisation jobs defined in the SYNC_JOBS config section"""
+
     scheduler = BackgroundScheduler(timzone=config.get('COMMON', 'timezone'))
     jobs = [config.getlist('SYNC_JOBS', o) for o in config['SYNC_JOBS'].keys()]
     port = config.get('COMMON', 'port')
@@ -84,6 +96,8 @@ def start_sync_jobs():
     scheduler.start()
 
 def app_startup():
+    """app factory method launch function"""
+
     start_sync_jobs()
     return app
  

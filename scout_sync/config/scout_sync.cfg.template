@@ -1,8 +1,13 @@
 [COMMON]
 log_file = scout_sync.log
 timezone = Europe/Berlin
+
+# the port on which the app should listen
 port = 8000
+
+# which table handler to use: 'gsheets' for Google Sheets, 'ods' for a ODS table
 use_table = gsheets
+
 simulate = False
 
 [GOOGLE_API]
@@ -20,12 +25,16 @@ id =
 id = 
 sheet_name =
 sheet_id =
+
+# the row number, that contains the column captions (one-indexed)
 captions_row =
 
 [ODS_TABLE]
 # Libre Office Calc Spreadsheet
 file =
 sheet =
+
+# the row number, that contains the column captions (one-indexed)
 captions_row =
 
 [SCHEDULE_LEAGUES]
