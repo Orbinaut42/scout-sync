@@ -63,7 +63,7 @@ def table():
     with open(events_cache_path_file, 'rb') as f:
         events = pickle.load(f)
         return render_template(
-            'game_list.html',
+            'game_table.html',
             events=events,
             today=arrow.now(config.get('COMMON', 'timezone')).date())
 
