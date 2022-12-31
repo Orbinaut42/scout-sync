@@ -469,7 +469,7 @@ class OdsTableHandler:
         if self.__file:
             self.__table = self.__file.sheets[(self.__sheet_name or 0)]
             
-            for cell in self.__table.row(self.__captions_row):
+            for cell in self.__table.row(self.__captions_row-1):
                 self.__captions.extend(
                     [cell.value] if cell.value != 'Scouter'
                     else ['Scouter1', 'Scouter2', 'Scouter3'])
@@ -478,7 +478,7 @@ class OdsTableHandler:
                 del self.__captions[-1]
 
             for i, row in enumerate(self.__table.rows()):
-                if i <= self.__captions_row or not any([cell.value for cell in row]):
+                if i <= self.__captions_row-1 or not any([cell.value for cell in row]):
                     continue
                    
                 idx = max((self.__index.keys() or [-1])) + 1
@@ -496,7 +496,7 @@ class OdsTableHandler:
             key=lambda e: (e.datetime or arrow.Arrow(9999)))
 
         for ev in events:
-            line = self.__captions_row + 1
+            line = self.__captions_row
 
             for te in table_events:
                 if (te.datetime or arrow.Arrow(9999)) > (ev.datetime or arrow.Arrow(9999)):
@@ -507,7 +507,7 @@ class OdsTableHandler:
             self.__table.insert_rows(line)
             idx = max((self.__index.keys() or [-1])) + 1
             self.__index[idx] = self.__table.row(line)
-            table_events.insert(line-self.__captions_row-1, ev)
+            table_events.insert(line-self.__captions_row-2, ev)
 
             for c1, c2 in zip(self.__index[idx], ev.as_ods_table_row(self.__captions)):
                 if c2 is None:
@@ -539,7 +539,7 @@ class OdsTableHandler:
         for idx in ids:
             ev = Event.from_ods_table_row(self.__index[idx], self.__captions)
             for i, row in enumerate(self.__table.rows()):
-                if i <= self.__captions_row:
+                if i <= self.__captions_row-1:
                     continue
 
                 if ev == Event.from_ods_table_row(row, self.__captions):
