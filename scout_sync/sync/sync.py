@@ -34,37 +34,39 @@ class Event:
         self.has_scouters = any([self.scouter1, self.scouter2, self.scouter3])
 
     @classmethod
-    def from_docs_table_row(cls, row, captions):
+    def from_gsheets_table_row(cls, row, captions):
         row_vals = {cap: value for value, cap in zip(row, captions) if cap}
+        if row_vals['Zeit'] == '':
+            row_vals['Zeit'] = 0
         
-        date = None
+        serial_date = None
         if isinstance(row_vals['Datum'], (int, float)):
-            date = row_vals['Datum']
+            serial_date = row_vals['Datum']
         else:
             logging.warning(f"Invalid date in table: {row_vals['Datum']}")
 
         if isinstance(row_vals['Zeit'], (int, float)):
-            if date is not None:
-                date += row_vals['Zeit']
+            if serial_date is not None:
+                serial_date += row_vals['Zeit']
         else:
             logging.warning(f"Invalid time in table: {row_vals['Zeit']}")
         
         e = cls()
         e.datetime = (
-            GSheetsTableHandler.serial_to_datetime(date, TIMEZONE) if date is not None
+            GSheetsTableHandler.serial_to_datetime(serial_date, TIMEZONE) if serial_date is not None
             else None)
-        e.location = row_vals['Halle'] or None
-        e.league = row_vals['Liga'] or None
-        e.opponent = row_vals['Gegner'] or None
-        e.scouter1 = row_vals['Scouter1'] or None
-        e.scouter2 = row_vals['Scouter2'] or None
-        e.scouter3 = row_vals['Scouter3'] or None
+        e.location = row_vals.get('Halle')
+        e.league = row_vals.get('Liga')
+        e.opponent = row_vals.get('Gegner')
+        e.scouter1 = row_vals.get('Scouter1')
+        e.scouter2 = row_vals.get('Scouter2')
+        e.scouter3 = row_vals.get('Scouter3')
         e.has_scouters = True
 
         return e
 
     @classmethod
-    def from_table_row(cls, row, captions):
+    def from_ods_table_row(cls, row, captions):
         row_vals = {cap: cell.value for cell, cap in zip(row, captions) if cap}
             
         try:
@@ -188,8 +190,23 @@ class Event:
             'overrides': [{'method': 'popup', 'minutes': 360}]}
 
         return event
+    
+    def as_gsheets_table_row(self, captions):
+        serial = GSheetsTableHandler.datetime_to_serial(self.datetime)
+        atts = {
+            'Datum': int(serial),
+            'Zeit': (serial - int(serial)) or None,
+            'Halle': self.location,
+            'Liga': self.league,
+            'Gegner': self.opponent,
+            'Scouter1': self.scouter1,
+            'Scouter2': self.scouter2,
+            'Scouter3': self.scouter3}
+        
+        values = [atts[key] for key in captions]
+        return values
 
-    def as_ods_row(self, captions):
+    def as_ods_table_row(self, captions):
         atts = {
             'Datum': (self.datetime.date().isoformat(), 'date'),
             'Zeit': (self.datetime.format('[PT]HH[H]mm[M]SS[S]'), 'time'),
@@ -214,21 +231,6 @@ class Event:
                 row.append(ezodf.Cell((val or ''), value_type = tp))
             
         return row
-    
-    def as_doc_table_row(self, captions):
-        serial = GSheetsTableHandler.datetime_to_serial(self.datetime)
-        atts = {
-            'Datum': int(serial),
-            'Zeit': (serial - int(serial)) or '',
-            'Halle': self.location,
-            'Liga': self.league,
-            'Gegner': self.opponent,
-            'Scouter1': self.scouter1,
-            'Scouter2': self.scouter2,
-            'Scouter3': self.scouter3}
-        
-        values = [[atts[key] for key in captions]]
-        return values
 
     def __str__(self):
         info_list = ((i or '') for i in (
@@ -261,24 +263,22 @@ class Event:
             all(s in event_scouter_list for s in self_scouter_list)])
 
 
-
-
 class CalendarHandler(GoogleCalendarAPI):
     def __init__(self, calendar_id):
         super().__init__(calendar_id, TIMEZONE, SIMULATE)
 
     def connect(self):
         try:
-            self.__connect_to_service()
+            self._connect_to_service()
         except Exception as e:
-            logging.error(f"Connection to calendar with ID {self.__calendar_id} failed: {e}")
+            logging.error(f"Connection to calendar with ID {self._resource_id} failed: {e}")
             return False
 
-        logging.info(f"Connected to calendar: {self.__calendar_id}")
+        logging.info(f"Connected to calendar: {self._resource_id}")
         return True
 
     def add_events(self, events):
-        if not self.__service:
+        if not self._service:
             return
 
         for ev in events:
@@ -286,15 +286,15 @@ class CalendarHandler(GoogleCalendarAPI):
                 logging.warning(f"Can not add event to calendar {ev}: event has no date")
                 continue
 
-            self.__insert_event(ev.as_calendar_event())
+            self._insert_event(ev.as_calendar_event())
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Added event to calendar:\n\t\t{ev}")
 
     def update_events(self, events):
-        if not self.__service:
+        if not self._service:
             return
 
         for id in events:
-            cal_ev = self.__get_single_event(id)
+            cal_ev = self._get_single_event(id)
             old_ev = Event.from_calendar_event(cal_ev)
             new_ev = events[id]
             if not new_ev.has_scouters:
@@ -303,41 +303,41 @@ class CalendarHandler(GoogleCalendarAPI):
                 new_ev.scouter3 = old_ev.scouter3
                 new_ev.has_scouters = True
 
-            self.__update_event(id, cal_ev, new_ev.to_calendar_event())
+            self._update_event(id, cal_ev, new_ev.as_calendar_event())
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in calendar:\n\t-\t{old_ev}\n\t+\t{new_ev}")
 
     def delete_events(self, ids):
-        if not self.__service:
+        if not self._service:
             return
         
         for id in ids:
-            cal_ev = self.__get_single_event(id)
+            cal_ev = self._get_single_event(id)
             old_ev = Event.from_calendar_event(cal_ev)
 
-            self.__delete_event(id, cal_ev)
+            self._delete_event(id, cal_ev)
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Deleted event in calendar:\n\t\t{old_ev}")
 
     def list_events(self):
-        if not self.__service:
+        if not self._service:
             return
   
-        ev_list = self.__get_all_events()
+        ev_list = self._get_all_events()
         return {ev['id']: Event.from_calendar_event(ev) for ev in ev_list}
 
 
 class GSheetsTableHandler(GoogleSheetsAPI):
     __captions_row = int(config.get('GSHEETS_TABLE', 'captions_row', fallback=None) or 0)
 
-    def __init__(self, spredsheet_id, sheet_name=None, sheet_id=0):
-        super.__init__(spredsheet_id, sheet_name, sheet_id, TIMEZONE, SIMULATE)
+    def __init__(self, spredsheet_id, sheet_name, sheet_id):
+        super().__init__(spredsheet_id, sheet_name, sheet_id, TIMEZONE, SIMULATE)
         self.__captions = []
-        self.__index = []
+        self.__index = {}
         self.__ids = []
     
     def connect(self):
         try:
-            self.__connect_to_service()
-            for cell in self.__get_range(self.__captions_row, dims=1):
+            self._connect_to_service()
+            for cell in self._get_range(self.__captions_row, dims=1):
                 self.__captions.extend(
                     [cell] if cell != 'Scouter'
                     else ['Scouter1', 'Scouter2', 'Scouter3'])
@@ -345,7 +345,7 @@ class GSheetsTableHandler(GoogleSheetsAPI):
             while self.__captions and not self.__captions[-1]:
                 del self.__captions[-1]
 
-            table_range = self.get_range(self.__captions_row+1, 9999, dims=2)
+            table_range = self._get_range(self.__captions_row+1, 9999, dims=2)
             self.__ids = [None] * self.__captions_row
             for id, row in enumerate(table_range):           
                 if any(row):
@@ -355,89 +355,99 @@ class GSheetsTableHandler(GoogleSheetsAPI):
                     self.__ids.append(None)
 
         except Exception as e:
-            logging.error(f"Connection to Google spreadsheet with ID {self.__resource_id} failed: {e}")
+            logging.error(f"Connection to Google spreadsheet with ID {self._resource_id} failed: {e}")
             return False
 
-        logging.info(f"Connected to Google spreadsheet: {self.__resource_id}")
+        logging.info(f"Connected to Google spreadsheet: {self._resource_id}")
         return True            
     
     def add_events(self, events):
-        if not self.__service:
+        if not self._service or not events:
             return
 
+        date_index = self.__captions.index('Datum')
+        time_index = self.__captions.index('Zeit')
         insert_events = []
         for ev in events:
-            for id, row in self.__index:
-                date_entry = row[self.__captions.index('Datum')]
-                time_entry = row[self.__captions.index('Zeit')]
+            for id, row in self.__index.items():
+                date_entry = row[date_index]
+                time_entry = row[time_index]
                 date = GoogleSheetsAPI.serial_to_datetime(
                     (date_entry if isinstance(date_entry, (float, int)) else 0) +
                     (time_entry if isinstance(time_entry, (float, int)) else 0),
-                    self.__timezone)
+                    TIMEZONE)
                 if date > (ev.datetime or arrow.Arrow(9999)):
+                    row_no = self.__ids.index(id)
                     break
+            else:
+                row_no = len(self.__ids)
             
-            row_no = self.__ids.index(id)
-            insert_events.append((row_no, ev.as_docs_table_row(self.__captions)))
-        
-        self.__insert_rows(insert_events)
+            
+            insert_events.append((row_no, ev.as_gsheets_table_row(self.__captions)))
+
+        insert_events.sort(
+            key=lambda e: e[1][date_index]+(e[1][time_index] or 0),
+            reverse=True)
+        self._insert_rows(insert_events)
         for row_no, event in insert_events:
             new_id = max((self.__index.keys() or [-1])) + 1
             self.__index[new_id] = event
-            self.__ids.insert(row_no-1, new_id)
+            self.__ids.insert(row_no, new_id)
 
         for ev in events:
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Added event to table:\n\t\t{ev}")
 
     def update_events(self, events):
-        if not self.__service:
+        if not self._service or not events:
             return
 
-        update_evs = [{
+        update_events = [{
             'id': id,
-            'row': self.__ids[id],
-            'old_event': Event.from_docs_table_row(self.__index[id], self.__captions),
+            'row': self.__ids.index(id),
+            'old_event': Event.from_gsheets_table_row(self.__index[id], self.__captions),
             'new_event': event}
             for id, event in events.items()]
         
-        for event in update_evs:
+        for event in update_events:
             if not event['new_event'].has_scouters:
                 event['new_event'].scouter1 = event['old_event'].scouter1
                 event['new_event'].scouter2 = event['old_event'].scouter1
                 event['new_event'].scouter3 = event['old_event'].scouter1
                 event['new_event'].has_scouters = True
 
-        self.__update_rows([
-            (ev['row'], ev['new_event'].as_docs_table_row(self.__captions))
-            for ev in update_evs])
+        self._update_rows([
+            (ev['row'], ev['new_event'].as_gsheets_table_row(self.__captions))
+            for ev in update_events])
 
-        for ev in update_evs:
-            self.__index[ev['id']] = ev['new_event'].as_docs_table_row(self.__captions)
+        for ev in update_events:
+            self.__index[ev['id']] = ev['new_event'].as_gsheets_table_row(self.__captions)
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in table:\n\t-\t{ev['old_event']}\n\t+\t{ev['new_event']}")
             
     def delete_events(self, event_ids):
-        if not self.__service:
+        if not self._service or not event_ids:
             return
 
-        self.__delete_rows([self.__ids[id] for id in event_ids])
+        delete_events = [self.__ids.index(id) for id in event_ids]
+        delete_events.sort(reverse=True)
+        self._delete_rows(delete_events)
 
         for id in event_ids:
-            event = Event.from_docs_table_row(self.__index[id])
+            event = Event.from_gsheets_table_row(self.__index[id], self.__captions)
             del self.__index[id]
             self.__ids.remove(id)
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Deleted event in table:\n\t\t{event}")
         
     def list_events(self):
-        if not self.__service:
+        if not self._service:
             return
 
-        events = {}
+        try:
+            events = {
+                i: Event.from_gsheets_table_row(row, self.__captions)
+                for i, row in self.__index.items()}
 
-        for i, row in self.__index.items():
-            try:
-                events[i] = Event.from_docs_table_row(row, self.__captions)
-            except (TypeError, ValueError) as e:
-                logging.warning(f"Can not create event: {e}")     
+        except (TypeError, ValueError) as e:
+            logging.warning(f"Can not create event: {e}")     
         
         return events
 
@@ -499,7 +509,7 @@ class OdsTableHandler:
             self.__index[idx] = self.__table.row(line)
             table_events.insert(line-self.__captions_row-1, ev)
 
-            for c1, c2 in zip(self.__index[idx], ev.as_ods_row(self.__captions)):
+            for c1, c2 in zip(self.__index[idx], ev.as_ods_table_row(self.__captions)):
                 if c2 is None:
                     continue
 
@@ -512,8 +522,8 @@ class OdsTableHandler:
 
     def update_events(self, events):
         for i in events:
-            ev = Event.from_table_row(self.__index[i], self.__captions)
-            for c1, c2 in zip(self.__index[i], events[i].as_ods_row(self.__captions)):
+            ev = Event.from_ods_table_row(self.__index[i], self.__captions)
+            for c1, c2 in zip(self.__index[i], events[i].as_ods_table_row(self.__captions)):
                 if c2 is None:
                     continue
 
@@ -522,17 +532,17 @@ class OdsTableHandler:
             if not SIMULATE:
                 self.__file.save()
 
-            new_ev = Event.from_table_row(self.__index[i], self.__captions)
+            new_ev = Event.from_ods_table_row(self.__index[i], self.__captions)
             logging.info(f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in table:\n\t-\t{ev}\n\t+\t{new_ev}")
         
     def delete_events(self, ids):
         for idx in ids:
-            ev = Event.from_table_row(self.__index[idx], self.__captions)
+            ev = Event.from_ods_table_row(self.__index[idx], self.__captions)
             for i, row in enumerate(self.__table.rows()):
                 if i <= self.__captions_row:
                     continue
 
-                if ev == Event.from_table_row(row, self.__captions):
+                if ev == Event.from_ods_table_row(row, self.__captions):
                     self.__table.delete_rows(i)
 
                     if not SIMULATE:
@@ -547,7 +557,7 @@ class OdsTableHandler:
 
         for i, row in self.__index.items():
             try:
-                events[i] = Event.from_table_row(row, self.__captions)
+                events[i] = Event.from_ods_table_row(row, self.__captions)
             except (TypeError, ValueError) as err:
                 logging.warning(f"Can not create event: {err}")     
         
@@ -636,7 +646,7 @@ def sync(source, dest):
     elif use_table == 'gsheets':
         table_handler = (
             GSheetsTableHandler,
-            config.get('GSHEETS_TABLE', 'spreadsheet_id'),
+            config.get('GSHEETS_TABLE', 'id'),
             config.get('GSHEETS_TABLE', 'sheet_name', fallback = None),
             config.get('GSHEETS_TABLE', 'sheet_id', fallback = None))
     else:

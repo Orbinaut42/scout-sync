@@ -6,15 +6,14 @@ import google_auth_oauthlib
 import arrow
 from ..config import config
 
-class GoogleAPI:
+class _GoogleAPI:
     def __init__(self, resource_id, timezone, simulate):
-        self.__resource_id = resource_id
-        self.__service = None
+        self._resource_id = resource_id
+        self._service = None
         self.__timezone = timezone
         self.__simulate = simulate
 
-    @classmethod
-    def __create_service(self, api_name, api_version):
+    def create_service(self, api_name, api_version):
         def credentials_from_oauth_info(oauth_info):
             credentials = google.oauth2.credentials.Credentials.from_authorized_user_info(
                 json.loads(oauth_info) if oauth_info else None)
@@ -26,7 +25,7 @@ class GoogleAPI:
         def credentials_from_service_account_info(account_info):
             credentials = google.oauth2.service_account.Credentials.from_service_account_info(
                 json.loads(account_info) if account_info else None)
-                
+
             return credentials
 
         oauth_info = config.get('GOOGLE_API', 'oauth_info', fallback=None)
@@ -38,76 +37,77 @@ class GoogleAPI:
         elif oauth_info:
             credentials = credentials_from_oauth_info(oauth_info)
         else:
-            return
+            raise ValueError(f'No authentication information provided for Google API "{api_name}"')
         
-        self.__service = googleapiclient.discovery.build(
+        self._service = googleapiclient.discovery.build(
             api_name, api_version, credentials=credentials, static_discovery=False)
 
-class GoogleCalendarAPI(GoogleAPI):
-    def __init__(self, calendar_id, timezone, simulate=False):
-        super.__init__(calendar_id,  timezone, simulate)
 
-    def __connect_to_service(self):
-        GoogleAPI.__create_service('calendar', 'v3')
+class GoogleCalendarAPI(_GoogleAPI):
+    def __init__(self, calendar_id, timezone, simulate=False):
+        super().__init__(calendar_id,  timezone, simulate)
+
+    def _connect_to_service(self):
+        self.create_service('calendar', 'v3')
 
         # test the connection
-        self.__service.calendars().get(self.__resource_id).execute()
+        self._service.calendars().get(calendarId=self._resource_id).execute()
     
-    def __get_all_events(self):
-        events = self.__service.events().list(
-            calendarId=self.__calendar_id,
+    def _get_all_events(self):
+        events = self._service.events().list(
+            calendarId=self._resource_id,
             singleEvents=True,
             orderBy='startTime').execute()  
 
         return events.get('items', [])
     
-    def __get_single_event(self, id):
-        event = self.__service.events().get(
-            calendarId=self.__resource_id,
+    def _get_single_event(self, id):
+        event = self._service.events().get(
+            calendarId=self._resource_id,
             eventId=id).execute()
 
         return event
     
-    def __insert_event(self, event):
+    def _insert_event(self, event):
             date = arrow.get(event['start']['dateTime'])
-            now = arrow.now(self.__timezone)
-            act = self.__service.events().insert(
-                calendarId=self.__resource_id,
+            now = arrow.now(self._GoogleAPI__timezone)
+            act = self._service.events().insert(
+                calendarId=self._resource_id,
                 body=event,
                 sendUpdates=('all' if date > now else 'none'))
 
-            if not self.__simulate:
+            if not self._GoogleAPI__simulate:
                 act.execute()
     
-    def __update_event(self, id, old_event, new_event):
+    def _update_event(self, id, old_event, new_event):
         old_date = arrow.get(old_event['start']['dateTime'])
         new_date = arrow.get(new_event['start']['dateTime'])
-        now = arrow.now(self.__timezone)
-        act = self.__service.events().update(
-            calendarId=self.__resource_id,
+        now = arrow.now(self._GoogleAPI__timezone)
+        act = self._service.events().update(
+            calendarId=self._resource_id,
             eventId=id,
             body=new_event,
             sendUpdates='all' if old_date > now or new_date > now else 'none')
         
-        if not self.__simulate:
+        if not self._GoogleAPI__simulate:
             act.execute()
     
-    def __delete_event(self, id, event):
+    def _delete_event(self, id, event):
         date = arrow.get(event['start']['dateTime'])
-        now = arrow.now(self.__timezone)
-        act = self.__service.events().delete(
-            calendarId=self.__resource_id,
+        now = arrow.now(self._GoogleAPI__timezone)
+        act = self._service.events().delete(
+            calendarId=self._resource_id,
             eventId=id,
             sendUpdates='all' if date > now else 'none')
 
-        if not self.__simulate:
+        if not self._GoogleAPI__simulate:
             act.execute()
 
-class GoogleSheetsAPI(GoogleAPI):
+class GoogleSheetsAPI(_GoogleAPI):
     def __init__(self, spreadsheet_id, sheet_name, sheet_id, timezone, simulate=False):
-        super.__init__(spreadsheet_id, timezone, simulate)
-        self.__sheet_name = sheet_name
-        self.__sheet_id = sheet_id
+        super().__init__(spreadsheet_id, timezone, simulate)
+        self.__sheet_name = sheet_name or None
+        self.__sheet_id = sheet_id or 0
 
     @classmethod
     def serial_to_datetime(cls, serial, timezone):
@@ -115,29 +115,29 @@ class GoogleSheetsAPI(GoogleAPI):
 
     @classmethod
     def datetime_to_serial(cls, datetime):
-        return (datetime - arrow.get('1899-12-30')).total_seconds() / (60 * 60 * 24)
+        return (datetime.naive - arrow.get('1899-12-30').naive).total_seconds() / (60 * 60 * 24)
     
     @classmethod
-    def insert_row_request(cls, row, sheet_id):
+    def __insert_row_request(cls, row, sheet_id):
         return {
             'insertDimension': {
                 'inheritFromBefore': True,
                 'range': {
                     'sheetId': sheet_id,
                     'dimension': 'ROWS',
-                    'startIndex': row-1,
-                    'endIndex': row
+                    'startIndex': row,
+                    'endIndex': row+1
                 },
             }
         }
 
     @classmethod
-    def update_row_request(cls, row, data, sheet_id):
+    def __update_row_request(cls, row, data, sheet_id):
         return {
             'updateCells': {
                 'start': {
                     'sheetId': sheet_id,
-                    'rowIndex': row-1
+                    'rowIndex': row
                 },
                 'rows': [
                     {
@@ -156,25 +156,66 @@ class GoogleSheetsAPI(GoogleAPI):
         }
     
     @classmethod
-    def delete_row_request(cls, row, sheet_id):
+    def __delete_row_request(cls, row, sheet_id):
         return {
             'deleteDimension': {
                 'range': {
                     'sheetId': sheet_id,
                     'dimension': 'ROWS',
-                    'startIndex': row-1,
-                    'endIndex': row
+                    'startIndex': row,
+                    'endIndex': row+1
                 }
             }
         }
 
+    def _connect_to_service(self):
+        self.create_service('sheets', 'v4')
+
+        # test the connection
+        self._service.spreadsheets().get(spreadsheetId=self._resource_id).execute()
+    
+    def _get_range(self, range_start, range_end=None, major_dimension='ROWS', dims=0):
+        values = self._service.spreadsheets().values().get(
+            spreadsheetId=self._resource_id,
+            range=self.__range_descriptor(range_start, range_end),
+            valueRenderOption='UNFORMATTED_VALUE',
+            majorDimension=major_dimension).execute()['values']
+    	
+        if dims==0:
+            return values[0][0]
+        elif dims==1:
+            return values[0]
+        else:
+            return values
+
+    def _insert_rows(self, rows_data):
+        requests = []
+        for row, data in rows_data:
+            requests.extend([
+                GoogleSheetsAPI.__insert_row_request(row, self.__sheet_id),
+                GoogleSheetsAPI.__update_row_request(row, data, self.__sheet_id)])
+        
+        self.__batch_update(requests)
+    
+    def _update_rows(self, rows_data):
+        requests = [
+            GoogleSheetsAPI.__update_row_request(row, data, self.__sheet_id)
+            for row, data in rows_data]
+        self.__batch_update(requests)
+    
+    def _delete_rows(self, rows):
+        requests = [
+            GoogleSheetsAPI.__delete_row_request(row, self.__sheet_id)
+            for row in rows]
+        self.__batch_update(requests)
+
     def __batch_update(self, requests):
         body = {'requests': requests}
-        act = self.__service.spreadsheets().batchUpdate(
-            spreadsheetId=self.__resource_id,
+        act = self._service.spreadsheets().batchUpdate(
+            spreadsheetId=self._resource_id,
             body=body)
 
-        if not self.__simulate:
+        if not self._GoogleAPI__simulate:
             act.execute()
     
     def __range_descriptor(self, start, end=None):
@@ -187,46 +228,6 @@ class GoogleSheetsAPI(GoogleAPI):
         else:
             return f"{sheet_descriptor}{start}:{end}"
 
-    def __connect_to_service(self):
-        GoogleAPI.__create_service('sheets', 'v4')
-
-        # test the connection
-        self.__service.spreadsheets().get(self.__resource_id).execute()
-    
-    def __get_range(self, range_start, range_end=None, major_dimension='ROWS', dims=0):
-        values = self.__service.spreadsheets().values().get(
-            spreadsheetId=self.__resource_id,
-            range=self.__range_descriptor(range_start, range_end),
-            valueRenderOption='UNFORMATTED_VALUE',
-            majorDimension=major_dimension).execute()['values']
-    	
-        if dims==0:
-            return values[0][0]
-        elif dims==1:
-            return values[0]
-        else:
-            return values
-
-    def __insert_rows(self, rows_data):
-        requests = []
-        for row, data in sorted(rows_data, key=lambda r: r[0], reverse=True):
-            requests.extend([
-                GoogleSheetsAPI.insert_row_request(row, self.__sheet_id),
-                GoogleSheetsAPI.update_row_request(row, data, self.__sheet_id)])
-        
-        self.__batch_update(requests)
-    
-    def __update_rows(self, rows_data):
-        requests = [
-            GoogleSheetsAPI.update_row_request(row, data, self.__sheet_id)
-            for row, data in rows_data]
-        self.__batch_update(requests)
-    
-    def __delete_rows(self, rows):
-        requests = [
-            GoogleSheetsAPI.delete_row_request(row, self.__sheet_id)
-            for row in sorted(rows, reverse=True)]
-        self.__batch_update(requests)
 
 def refresh_oauth_token():
     """refresh an expired installed app OAuth token"""

@@ -8,6 +8,7 @@ parser.add_argument('--from', dest='source',
 parser.add_argument('--to', dest='dest',
                     choices=['calendar', 'table'])
 parser.add_argument('--refresh-credentials', action='store_true')
+
 ARGS = parser.parse_args()
 
 if ARGS.refresh_credentials:
