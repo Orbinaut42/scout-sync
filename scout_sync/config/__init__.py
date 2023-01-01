@@ -15,10 +15,10 @@ for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
     if not config.has_option('EMAILS', name):
         config['EMAILS'][name] = email
 
-if not config.get('CALENDAR', 'oauth_info', fallback=None):
-    config['CALENDAR']['oauth_info'] = os.getenv('OAUTH_INFO', default='')
+if not config.get('GOOGLE_API', 'oauth_info', fallback=None):
+    config['GOOGLE_API']['oauth_info'] = os.getenv('OAUTH_INFO', default='')
 
-if not config.get('CALENDAR', 'service_account_info', fallback=None):
-    config['CALENDAR']['service_account_info'] = os.getenv('SERVICE_ACCOUNT_INFO', default='')
+if not config.get('GOOGLE_API', 'service_account_info', fallback=None):
+    config['GOOGLE_API']['service_account_info'] = os.getenv('SERVICE_ACCOUNT_INFO', default='')
 
 __all__ = ['config']
