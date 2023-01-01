@@ -8,7 +8,7 @@ from ..config import config
 
 class _GoogleAPI:
     """Base class for the Google API functionality"""
-    
+
     def __init__(self, resource_id, timezone, simulate):
         """resource_id -> string Id of the calendar, spreadsheet, ...
         timezone -> string timezone for calendar event creation
@@ -64,7 +64,7 @@ class GoogleCalendarAPI(_GoogleAPI):
         self.create_service('calendar', 'v3')
 
         # test the connection
-        self._service.calendars().get(calendarId=self._resource_id).execute()
+        self._service.events().list(calendarId=self._resource_id).execute()
     
     def _get_all_events(self):
         """Returns al list of all events in the calendar"""
