@@ -1,11 +1,13 @@
 __pycache__/
 .vscode/
+venv/
+
 *.log
 *.code-workspace
-
 .env
 .env_
 .replit
+*.nix
 *.lock
 *.cache
 secrets.json
