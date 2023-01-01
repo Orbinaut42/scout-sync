@@ -40,10 +40,10 @@ class _GoogleAPI:
         oauth_info = config.get('GOOGLE_API', 'oauth_info', fallback=None)
         service_account_info = config.get('GOOGLE_API', 'service_account_info', fallback=None)
 
-        # prioritise authentication with service account
-        if service_account_info:
+        # prioritise authentication with oauth
+        if oauth_info:
             credentials = credentials_from_service_account_info(service_account_info)
-        elif oauth_info:
+        elif service_account_info:
             credentials = credentials_from_oauth_info(oauth_info)
         else:
             raise ValueError(f'No authentication information provided for Google API "{api_name}"')
