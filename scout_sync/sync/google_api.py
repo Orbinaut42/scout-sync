@@ -42,9 +42,9 @@ class _GoogleAPI:
 
         # prioritise authentication with oauth
         if oauth_info:
-            credentials = credentials_from_service_account_info(service_account_info)
+            credentials = credentials_from_service_account_info(oauth_info)
         elif service_account_info:
-            credentials = credentials_from_oauth_info(oauth_info)
+            credentials = credentials_from_oauth_info(service_account_info)
         else:
             raise ValueError(f'No authentication information provided for Google API "{api_name}"')
         
