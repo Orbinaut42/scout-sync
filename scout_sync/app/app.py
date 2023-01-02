@@ -44,7 +44,7 @@ def sync_():
     logging.info(f'Sync request from {request.access_route[0]} ({source} -> {dest})')
 
     if source not in targets or dest not in targets:
-        abort(400, 'invalid "from" or "to" argument')
+        abort(400, description='invalid "from" or "to" argument')
     
     try:
         events = sync(source, dest)
