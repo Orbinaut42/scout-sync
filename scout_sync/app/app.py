@@ -58,22 +58,22 @@ def sync_():
     
     return {}, 201
 
-@app.route('/table')
-def table():
-    """GET access point for the current game table
-    Returns a HTML document witch the table, created from the events stored in the events cache file,
+@app.route('/list')
+def list():
+    """GET access point for the current game list
+    Returns a HTML document with the list, from the events stored in the events cache file,
     created by the last sync request"""
 
-    logging.info(f'Table request from {request.access_route[0]}')
+    logging.info(f'List request from {request.access_route[0]}')
 
     events_cache_path_file = os.path.join(os.path.dirname(__file__), EVENTS_CACHE_FILE)
     if not os.path.isfile(events_cache_path_file):
-        abort(500, 'Events have not been cached yet.')
+        abort(500, description='Events have not been cached yet.')
     
     with open(events_cache_path_file, 'rb') as f:
         events = pickle.load(f)
         return render_template(
-            'game_table.html',
+            'game_list.html',
             events=events,
             today=arrow.now(config.get('COMMON', 'timezone')).date())
 
