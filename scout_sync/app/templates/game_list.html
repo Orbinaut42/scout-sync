@@ -74,7 +74,7 @@
       </thead>
       <tbody>
         {% for event in events.values(): %}
-        <tr class={{"upcoming" if event.datetime.date() > today else "past"}}>
+        <tr class={{"past" if event.datetime.date() < today else "upcoming"}}>
           <td>{{event.datetime.format('ddd, DD.MM.YYYY', locale='de_DE')}}</td>
           <td>{{event.datetime.format('HH:mm') if event.datetime.format('HH:mm') != '00:00' else ''}}</td>
           <td>{{event.location or ''}}</td>
