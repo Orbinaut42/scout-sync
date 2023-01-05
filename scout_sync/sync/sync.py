@@ -112,6 +112,9 @@ class Event:
         e.opponent = event.get('description', None)
         scouter_list = []
         for a in event.get('attendees', []):
+            if a['responseStatus'] == 'declined':
+                continue
+
             try:
                 scouter_list.append(cls.__names[a['email']])
             except KeyError:
