@@ -625,7 +625,10 @@ class ScheduleHandler:
                 if r.status_code == 200:
                     try:
                         league_schedule = r.json()
-                    except(json.decoder.JSONDecodeError):
+                        if league_schedule['data'] is None:
+                            raise ValueError()
+                            
+                    except(json.decoder.JSONDecodeError, ValueError):
                         logging.error(f"Can not read schedule for league {league_name}")
                         return False
                 else:

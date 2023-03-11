@@ -90,7 +90,9 @@ def start_sync_jobs():
         scheduler.add_job(
             task,
             'interval',
-            kwargs = {'source': source, 'target': target}, minutes=interval)
+            kwargs = {'source': source, 'target': target},
+            minutes=interval,
+            start_date = arrow.get().shift(seconds=10).datetime)
         logging.info(f"added sync job: {source} -> {target} ({interval}min)")
 
     scheduler.start()
