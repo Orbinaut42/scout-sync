@@ -156,10 +156,10 @@ class Event:
 
         e = cls()
         e.datetime = arrow.get(f'{event["kickoffDate"]}T{event["kickoffTime"]}', tzinfo=TIMEZONE)
-        location_id = str(event['matchInfo']['spielfeld']['id'])
+        location_id = (event['matchInfo']['spielfeld'] or {}).get('id')
         e.location = ScheduleHandler.arenas.get(
-            location_id,
-            event['matchInfo']['spielfeld']['bezeichnung'])
+            str(location_id),
+            (event['matchInfo']['spielfeld'] or {}).get('bezeichnung', ''))
         e.league = league_name
         e.opponent = event['guestTeam']['teamname']
         e.scouter1 = None
@@ -167,7 +167,7 @@ class Event:
         e.scouter3 = None
         e.has_scouters = False
 
-        if location_id and location_id not in ScheduleHandler.arenas:
+        if location_id and str(location_id) not in ScheduleHandler.arenas:
             logging.warning(f"Event at {e.datetime}: Unknown arena ID in Schedule: {location_id}")
         
         return e
