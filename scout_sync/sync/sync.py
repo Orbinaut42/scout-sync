@@ -58,7 +58,7 @@ class Event:
         e.datetime = (
             GSheetsTableHandler.serial_to_datetime(serial_date, TIMEZONE) if serial_date is not None
             else None)
-        e.location = row_vals.get('Halle')
+        e.location = row_vals.get('Halle') or None
         e.league = row_vals.get('Liga')
         e.opponent = row_vals.get('Gegner')
         e.scouter1 = row_vals.get('Scouter1')
