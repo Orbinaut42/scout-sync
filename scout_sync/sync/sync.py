@@ -159,7 +159,7 @@ class Event:
         location_id = (event['matchInfo']['spielfeld'] or {}).get('id')
         e.location = ScheduleHandler.arenas.get(
             str(location_id),
-            (event['matchInfo']['spielfeld'] or {}).get('bezeichnung', ''))
+            (event['matchInfo']['spielfeld'] or {}).get('bezeichnung'))
         e.league = league_name
         e.opponent = event['guestTeam']['teamname']
         e.scouter1 = None
