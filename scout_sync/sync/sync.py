@@ -606,7 +606,7 @@ class ScheduleHandler:
 
     def __init__(self, leagues):
         self.__schedule = []
-        self.__leagues = [dict(zip(['league_name', 'league_id', 'team_id'], l)) for l in leagues]
+        self.__leagues = [dict(zip(['league_name', 'league_id', 'team_permanent_id', 'team_season_id'], l)) for l in leagues]
 
     def connect(self):
         api_url = 'https://www.basketball-bund.net/rest'
@@ -617,7 +617,7 @@ class ScheduleHandler:
         with requests.Session() as s:
             for league in self.__leagues:
                 # get the complete league schedule
-                league_name, league_id, team_id = league.values()
+                league_name, league_id, team_permanent_id, team_season_id = league.values()
                 r = s.get(
                     schedule_url.format(league_id=league_id),
                     timeout=ScheduleHandler.__REQUEST_TIMEOUT)
@@ -638,7 +638,9 @@ class ScheduleHandler:
                 team_matches = [
                     match['matchId']
                     for match in league_schedule['data']['matches']
-                    if match['homeTeam']['teamPermanentId'] == team_id]
+                    if (
+                        (team_permanent_id and match['homeTeam']['teamPermanentId'] == team_permanent_id) or
+                        (team_season_id and match['homeTeam']['seasonTeamId'] == team_season_id))]
 
                 # get the details for each match
                 for match_id in team_matches:
