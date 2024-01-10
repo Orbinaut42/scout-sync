@@ -22,7 +22,7 @@ function onSyncSelection(e) {
   }
   
   function sync_calendar_to_table() {
-    var url = "https://scout-sync.orbinaut.repl.co/sync";
+    var url = "https://scoutingbbu.replit.app/sync";
     var options = {
       "method": "post",
       "payload": {
@@ -37,7 +37,7 @@ function onSyncSelection(e) {
   }
   
   function sync_table_to_calendar() {
-    var url = "https://scout-sync.orbinaut.repl.co/sync";
+    var url = "https://scoutingbbu.replit.app/sync";
     var options = {
       "method": "post",
       "payload": {
@@ -52,7 +52,7 @@ function onSyncSelection(e) {
   }
   
   function keep_alive() {
-    var url = "https://scout-sync.orbinaut.repl.co";
+    var url = "https://scoutingbbu.replit.app";
     var response = UrlFetchApp.fetch(url)
     return response
   }
