@@ -5,6 +5,9 @@ timezone = Europe/Berlin
 # the port on which the app should listen
 port = 8000
 
+# timeout for requests to the schedules API
+schedule_request_timeout = 20
+
 # which table handler to use: 'gsheets' for Google Sheets, 'ods' for a ODS table
 use_table = gsheets
 
