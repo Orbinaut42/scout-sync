@@ -4,7 +4,7 @@ import logging
 import pickle
 import requests
 import arrow
-from flask import Flask, render_template, request, abort
+from flask import Flask, request, abort
 from apscheduler.schedulers.background import BackgroundScheduler
 from ..config import config
 from ..sync import sync
@@ -21,9 +21,9 @@ sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.exception(
     exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
 
 EVENTS_CACHE_FILE = 'events.cache'
-app = Flask('scout_sync',
-            template_folder=os.path.join(os.path.dirname(__file__),
-                                         'templates'))
+app = Flask(
+    'scout_sync',
+    static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 
 
 @app.route('/')
@@ -67,23 +67,28 @@ def sync_():
 @app.route('/list')
 def list():
     """GET access point for the current game list
-    Returns a HTML document with the list, from the events stored in the events cache file,
-    created by the last sync request"""
+    Returns a HTML document with the empty table"""
 
     logging.info(f'List request from {request.access_route[0]}')
+    return app.send_static_file('game_list.html')
 
-    events_cache_path_file = os.path.join(os.path.dirname(__file__),
-                                          EVENTS_CACHE_FILE)
+@app.route('/list/events')
+def events():
+    """GET access point for the current table contents
+    Returns the cached events in JSON format"""
+
+    logging.info(f'Events update request from {request.access_route[0]}')
+
+    events_cache_path_file = os.path.join(
+        os.path.dirname(__file__),
+        EVENTS_CACHE_FILE)
+    
     if not os.path.isfile(events_cache_path_file):
         abort(500, description='Events have not been cached yet.')
 
     with open(events_cache_path_file, 'rb') as f:
-        events = pickle.load(f)
-        return render_template('game_list.html',
-                               events=events,
-                               today=arrow.now(config.get(
-                                   'COMMON', 'timezone')).date())
-
+        events_cache = pickle.load(f)
+        return [e.to_json() for e in events_cache.values()]
 
 def start_sync_jobs():
     """start a scheduler with the syncronisation jobs defined in the SYNC_JOBS config section"""

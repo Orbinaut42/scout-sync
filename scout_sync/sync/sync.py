@@ -285,6 +285,18 @@ class Event:
                       self.location, self.league, self.opponent, self.scouter1,
                       self.scouter2, self.scouter3))
         return '{0}, {1}, {2}, {3}, {4}, {5}, {6}'.format(*info_list)
+    
+    def to_json(self):
+        return {
+            'datetime': self.datetime.format(),
+            'loction': self.location,
+            'league': self.league,
+            'location': self.location,
+            'league': self.league,
+            'opponent': self.opponent,
+            'scouter1': self.scouter1,
+            'scouter2': self.scouter2,
+            'scouter3': self.scouter3}
 
     def is_same(self, event):
         """Compare two Event objects
