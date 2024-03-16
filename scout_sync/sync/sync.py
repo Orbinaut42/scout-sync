@@ -289,8 +289,6 @@ class Event:
     def to_json(self):
         return {
             'datetime': self.datetime.format(),
-            'loction': self.location,
-            'league': self.league,
             'location': self.location,
             'league': self.league,
             'opponent': self.opponent,
