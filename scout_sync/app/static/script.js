@@ -4,7 +4,7 @@ function addTableData(tr, content) {
     tr.appendChild(td)
 }
 
-document.addEventListener("focus", () => {
+function loadTableContents() {
     fetch('/list/events').then(response => {
         if (!response.ok) {
             throw new Error(response.status)
@@ -40,4 +40,4 @@ document.addEventListener("focus", () => {
             })
         })
     })
-})
+}
