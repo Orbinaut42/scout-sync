@@ -24,16 +24,14 @@ class Event:
     __names = {v: k for k, v in config.items('EMAILS')}
 
     def __init__(
-            self,
-            id=None,
-            datetime=None,
+            self, id, datetime,
             location=None,
             league=None,
             opponent=None,
             scouter1=None,
             scouter2=None,
             scouter3=None):
-        self.id = id,
+        self.id = str(id)
         self.datetime = datetime
         self.location = location
         self.league = league
@@ -47,6 +45,9 @@ class Event:
     def from_gsheets_table_row(cls, row, captions):
         """Create an event from a Google Sheets row"""
         row_vals = {cap: value for value, cap in zip(row, captions) if cap}
+        if row_vals.get('ID') in [None, '']:
+            logging.warning(f"Event without ID in table!")
+
         if row_vals['Zeit'] == '':
             row_vals['Zeit'] = 0
 
@@ -62,16 +63,17 @@ class Event:
         else:
             logging.warning(f"Invalid time in table: {row_vals['Zeit']}")
 
-        e = cls()
-        e.id = row_vals.get('id')
-        e.datetime = (GSheetsTableHandler.serial_to_datetime(
-            serial_date, TIMEZONE) if serial_date is not None else None)
-        e.location = row_vals.get('Halle') or None
-        e.league = row_vals.get('Liga')
-        e.opponent = row_vals.get('Gegner')
-        e.scouter1 = row_vals.get('Scouter1')
-        e.scouter2 = row_vals.get('Scouter2')
-        e.scouter3 = row_vals.get('Scouter3')
+        e = cls(
+            id = row_vals.get('ID'),
+            datetime = (GSheetsTableHandler.serial_to_datetime(
+                serial_date, TIMEZONE) if serial_date is not None else None),
+            location = row_vals.get('Halle') or None,
+            league = row_vals.get('Liga'),
+            opponent = row_vals.get('Gegner'),
+            scouter1 = row_vals.get('Scouter1'),
+            scouter2 = row_vals.get('Scouter2'),
+            scouter3 = row_vals.get('Scouter3'))
+        
         e.has_scouters = True
 
         return e
@@ -80,12 +82,6 @@ class Event:
     def from_calendar_event(cls, event):
         """Create an event from a Google Calendar event"""
 
-        e = cls()
-        e.id = event.get('id', None)
-        e.datetime = arrow.get(event['start']['dateTime'])
-        e.location = event.get('location', None)
-        e.league = event.get('summary', '').replace('Scouting ', '') or None
-        e.opponent = event.get('description', None)
         scouter_list = []
         for a in event.get('attendees', []):
             if a['responseStatus'] == 'declined':
@@ -95,12 +91,18 @@ class Event:
                 scouter_list.append(cls.__names[a['email']])
             except KeyError:
                 logging.warning(
-                    f"Unknown email in calendar event at {e.datetime}: {a['email']}"
-                )
+                    f"Unknown email in calendar event at {e.datetime}: {a['email']}")
 
-        e.scouter1 = (scouter_list[0] if len(scouter_list) > 0 else None)
-        e.scouter2 = (scouter_list[1] if len(scouter_list) > 1 else None)
-        e.scouter3 = (scouter_list[2] if len(scouter_list) > 2 else None)
+        e = cls(
+            id = event['id'],
+            datetime = arrow.get(event['start']['dateTime']),
+            location = event.get('location', None),
+            league = event.get('summary', '').replace('Scouting ', '') or None,
+            opponent = event.get('description', None),
+            scouter1 = (scouter_list[0] if len(scouter_list) > 0 else None),
+            scouter2 = (scouter_list[1] if len(scouter_list) > 1 else None),
+            scouter3 = (scouter_list[2] if len(scouter_list) > 2 else None))
+
         e.has_scouters = True
 
         if not e.league:
@@ -112,19 +114,17 @@ class Event:
     def from_JSON_schedule(cls, event, league_name):
         """Create an event from a JSON object (DBB schedule)"""
 
-        e = cls()
-        e.id = event["matchId"]
-        e.datetime = arrow.get(
-            f'{event["kickoffDate"]}T{event["kickoffTime"]}', tzinfo=TIMEZONE)
         location_id = (event['matchInfo']['spielfeld'] or {}).get('id')
-        e.location = ScheduleHandler.arenas.get(
-            str(location_id), (event['matchInfo']['spielfeld']
-                               or {}).get('bezeichnung'))
-        e.league = league_name
-        e.opponent = event['guestTeam']['teamname']
-        e.scouter1 = None
-        e.scouter2 = None
-        e.scouter3 = None
+        e = cls(
+            id = event["matchId"],
+            datetime = arrow.get(
+                f'{event["kickoffDate"]}T{event["kickoffTime"]}', tzinfo=TIMEZONE),
+            location = ScheduleHandler.arenas.get(
+                str(location_id),
+                (event['matchInfo']['spielfeld'] or {}).get('bezeichnung')),
+            league = league_name,
+            opponent = event['guestTeam']['teamname'])
+        
         e.has_scouters = False
 
         if location_id and str(location_id) not in ScheduleHandler.arenas:
@@ -203,7 +203,7 @@ class Event:
         info_list = (
             (i or '')
             for i in (
-                self.id,
+                str(self.id),
                 self.datetime.format() if self.datetime else None,
                 self.location,
                 self.league,
