@@ -3,7 +3,6 @@ import requests
 import arrow
 import json
 import time
-import ezodf
 from .google_api import GoogleCalendarAPI, GoogleSheetsAPI
 from ..config import config
 
@@ -78,40 +77,6 @@ class Event:
         return e
 
     @classmethod
-    def from_ods_table_row(cls, row, captions):
-        """Create an event from a ODS table row"""
-
-        row_vals = {cap: cell.value for cell, cap in zip(row, captions) if cap}
-
-        try:
-            date = arrow.get(row_vals['Datum'])
-        except (TypeError, ValueError):
-            date = None
-            logging.warning(f"Invalid date in table: {row_vals['Datum']}")
-
-        try:
-            time = arrow.get(row_vals['Zeit'], '[PT]HH[H]mm[M]SS[S]')
-        except (TypeError, ValueError) as err:
-            time = arrow.get(0)
-            if isinstance(err, ValueError) and row_vals['Zeit']:
-                logging.warning(f"Invalid time in table: {row_vals['Zeit']}")
-
-        e = cls()
-        e.id = row_vals.get('id') or None
-        e.datetime = (date.replace(
-            hour=time.hour, minute=time.minute, tzinfo=TIMEZONE)
-                      if date is not None else None)
-        e.location = row_vals['Halle'] or None
-        e.league = row_vals['Liga'] or None
-        e.opponent = row_vals['Gegner'] or None
-        e.scouter1 = row_vals['Scouter1'] or None
-        e.scouter2 = row_vals['Scouter2'] or None
-        e.scouter3 = row_vals['Scouter3'] or None
-        e.has_scouters = True
-
-        return e
-
-    @classmethod
     def from_calendar_event(cls, event):
         """Create an event from a Google Calendar event"""
 
@@ -140,30 +105,6 @@ class Event:
 
         if not e.league:
             logging.warning(f"Calendar event at {e.datetime} has no league")
-
-        return e
-
-    @classmethod
-    def from_ics(cls, event, team):
-        """Create an event from a ics object"""
-
-        e = cls()
-        e.datetime = arrow.get(event.begin.to(TIMEZONE))
-        location_code = event.name.split(',')[1].strip()
-        e.location = ScheduleHandler.arenas.get(location_code,
-                                                location_code) or None
-        e.league = team['league_name']
-        e.opponent = event.name.replace(team['team_name'] + '-',
-                                        '').split(',')[0].strip() or None
-        e.scouter1 = None
-        e.scouter2 = None
-        e.scouter3 = None
-        e.has_scouters = False
-
-        if location_code and location_code not in ScheduleHandler.arenas:
-            logging.warning(
-                f"Event at {e.datetime}: Unknown arena in Schedule: {location_code}"
-            )
 
         return e
 
@@ -257,36 +198,6 @@ class Event:
 
         values = [atts[key] for key in captions]
         return values
-
-    def as_ods_table_row(self, captions):
-        """create a representation of the event, that can be inserted into a ODS table"""
-
-        atts = {
-            'ID': self.id,
-            'Datum': (self.datetime.date().isoformat(), 'date'),
-            'Zeit': (self.datetime.format('[PT]HH[H]mm[M]SS[S]'), 'time'),
-            'Halle': (self.location, 'string'),
-            'Liga': (self.league, 'string'),
-            'Gegner': (self.opponent, 'string'),
-            'Scouter1': (self.scouter1, 'string'),
-            'Scouter2': (self.scouter2, 'string'),
-            'Scouter3': (self.scouter3, 'string')
-        }
-
-        if atts['Zeit'][0] == 'PT00H00M00S':
-            atts['Zeit'] = ('', 'string')
-
-        default = {'', None}
-        row = []
-        for c in captions:
-            val, tp = atts.get(c, default)
-
-            if c.startswith('Scouter') and not self.has_scouters:
-                row.append(None)
-            else:
-                row.append(ezodf.Cell((val or ''), value_type=tp))
-
-        return row
 
     def __str__(self):
         info_list = (
@@ -567,130 +478,6 @@ class GSheetsTableHandler(GoogleSheetsAPI):
         return events
 
 
-class OdsTableHandler:
-    """Manages the ODS table"""
-
-    __captions_row = int(
-        config.get('ODS_TABLE', 'captions_row', fallback=None) or 0)
-
-    def __init__(self, file_name, sheet_name=None):
-        self.__file_name = file_name
-        self.__sheet_name = sheet_name
-        self.__file = None
-        self.__table = None
-        self.__captions = []
-        self.__index = {}
-
-    def connect(self):
-        self.__file = ezodf.opendoc(self.__file_name)
-
-        if self.__file:
-            self.__table = self.__file.sheets[(self.__sheet_name or 0)]
-
-            for cell in self.__table.row(self.__captions_row - 1):
-                self.__captions.extend(
-                    [cell.value] if cell.value != 'Scouter' else
-                    ['Scouter1', 'Scouter2', 'Scouter3'])
-
-            while self.__captions and not self.__captions[-1]:
-                del self.__captions[-1]
-
-            for i, row in enumerate(self.__table.rows()):
-                if i <= self.__captions_row - 1 or not any(
-                    [cell.value for cell in row]):
-                    continue
-
-                idx = max((self.__index.keys() or [-1])) + 1
-                self.__index[idx] = row
-
-            logging.info(f"Opened table: {self.__file_name}")
-            return True
-        else:
-            logging.error(f"Can not open table: {self.__file_name}")
-            return False
-
-    def add_events(self, events):
-        table_events = sorted(self.list_events().values(),
-                              key=lambda e: (e.datetime or arrow.Arrow(9999)))
-
-        for ev in events:
-            line = self.__captions_row
-
-            for te in table_events:
-                if (te.datetime or arrow.Arrow(9999)) > (ev.datetime
-                                                         or arrow.Arrow(9999)):
-                    break
-
-                line += 1
-
-            self.__table.insert_rows(line)
-            idx = max((self.__index.keys() or [-1])) + 1
-            self.__index[idx] = self.__table.row(line)
-            table_events.insert(line - self.__captions_row - 2, ev)
-
-            for c1, c2 in zip(self.__index[idx],
-                              ev.as_ods_table_row(self.__captions)):
-                if c2 is None:
-                    continue
-
-                c1.set_value(c2.value, value_type=c2.value_type)
-
-            if not SIMULATE:
-                self.__file.save()
-
-            logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Added event to table:\n\t\t{ev}"
-            )
-
-    def update_events(self, events):
-        for i in events:
-            ev = Event.from_ods_table_row(self.__index[i], self.__captions)
-            for c1, c2 in zip(self.__index[i],
-                              events[i].as_ods_table_row(self.__captions)):
-                if c2 is None:
-                    continue
-
-                c1.set_value(c2.value, value_type=c2.value_type)
-
-            if not SIMULATE:
-                self.__file.save()
-
-            new_ev = Event.from_ods_table_row(self.__index[i], self.__captions)
-            logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in table:\n\t-\t{ev}\n\t+\t{new_ev}"
-            )
-
-    def delete_events(self, ids):
-        for idx in ids:
-            ev = Event.from_ods_table_row(self.__index[idx], self.__captions)
-            for i, row in enumerate(self.__table.rows()):
-                if i <= self.__captions_row - 1:
-                    continue
-
-                if ev == Event.from_ods_table_row(row, self.__captions):
-                    self.__table.delete_rows(i)
-
-                    if not SIMULATE:
-                        self.__file.save()
-
-                    logging.info(
-                        f"{'(SIMULATED) ' if SIMULATE else ''}Deleted event in table:\n\t\t{ev}"
-                    )
-
-                    break
-
-    def list_events(self):
-        events = {}
-
-        for i, row in self.__index.items():
-            try:
-                events[i] = Event.from_ods_table_row(row, self.__captions)
-            except (TypeError, ValueError) as err:
-                logging.warning(f"Can not create event: {err}")
-
-        return events
-
-
 class ScheduleHandler:
     "manages downloads from the DBB game schedule database"
 
@@ -792,22 +579,13 @@ def sync(source, dest):
 
     start_time = time.time()
 
-    # choose the correct handler for the 'table' target according to the 'use_table' config option
-    use_table = config.get('COMMON', 'use_table')
-    if use_table == 'ods':
-        table_handler = (OdsTableHandler, config.get('ODS_TABLE', 'file'),
-                         config.get('ODS_TABLE', 'sheet', fallback=None))
-    elif use_table == 'gsheets':
-        table_handler = (GSheetsTableHandler,
-                         config.get('GSHEETS_TABLE', 'id'),
-                         config.get('GSHEETS_TABLE',
-                                    'sheet_name',
-                                    fallback=None),
-                         config.get('GSHEETS_TABLE', 'sheet_id',
-                                    fallback=None))
-    else:
-        raise RuntimeError(
-            f"Invalid config entry for COMMON/use_table: {use_table}")
+    table_handler = (GSheetsTableHandler,
+                        config.get('GSHEETS_TABLE', 'id'),
+                        config.get('GSHEETS_TABLE',
+                                'sheet_name',
+                                fallback=None),
+                        config.get('GSHEETS_TABLE', 'sheet_id',
+                                fallback=None))
 
     schedule_leagues = [
         config.getlist('SCHEDULE_LEAGUES', o)
