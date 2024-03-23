@@ -24,14 +24,17 @@ class Event:
     __emails = {k: v for k, v in config.items('EMAILS')}
     __names = {v: k for k, v in config.items('EMAILS')}
 
-    def __init__(self,
-                 datetime=None,
-                 location=None,
-                 league=None,
-                 opponent=None,
-                 scouter1=None,
-                 scouter2=None,
-                 scouter3=None):
+    def __init__(
+            self,
+            id=None,
+            datetime=None,
+            location=None,
+            league=None,
+            opponent=None,
+            scouter1=None,
+            scouter2=None,
+            scouter3=None):
+        self.id = id,
         self.datetime = datetime
         self.location = location
         self.league = league
@@ -61,6 +64,7 @@ class Event:
             logging.warning(f"Invalid time in table: {row_vals['Zeit']}")
 
         e = cls()
+        e.id = row_vals.get('id')
         e.datetime = (GSheetsTableHandler.serial_to_datetime(
             serial_date, TIMEZONE) if serial_date is not None else None)
         e.location = row_vals.get('Halle') or None
@@ -93,6 +97,7 @@ class Event:
                 logging.warning(f"Invalid time in table: {row_vals['Zeit']}")
 
         e = cls()
+        e.id = row_vals.get('id') or None
         e.datetime = (date.replace(
             hour=time.hour, minute=time.minute, tzinfo=TIMEZONE)
                       if date is not None else None)
@@ -111,6 +116,7 @@ class Event:
         """Create an event from a Google Calendar event"""
 
         e = cls()
+        e.id = event.get('id', None)
         e.datetime = arrow.get(event['start']['dateTime'])
         e.location = event.get('location', None)
         e.league = event.get('summary', '').replace('Scouting ', '') or None
@@ -166,6 +172,7 @@ class Event:
         """Create an event from a JSON object (DBB schedule)"""
 
         e = cls()
+        e.id = event["matchId"]
         e.datetime = arrow.get(
             f'{event["kickoffDate"]}T{event["kickoffTime"]}', tzinfo=TIMEZONE)
         location_id = (event['matchInfo']['spielfeld'] or {}).get('id')
@@ -190,6 +197,7 @@ class Event:
         """create a representation of the event, that can be passed to the Google Calendar API"""
 
         event = {}
+        event['id'] = self.id
         if self.datetime:
             event['start'] = {
                 'dateTime': self.datetime.isoformat(),
@@ -236,6 +244,7 @@ class Event:
 
         serial = GSheetsTableHandler.datetime_to_serial(self.datetime)
         atts = {
+            'ID': self.id,
             'Datum': int(serial),
             'Zeit': (serial - int(serial)) or None,
             'Halle': self.location,
@@ -253,6 +262,7 @@ class Event:
         """create a representation of the event, that can be inserted into a ODS table"""
 
         atts = {
+            'ID': self.id,
             'Datum': (self.datetime.date().isoformat(), 'date'),
             'Zeit': (self.datetime.format('[PT]HH[H]mm[M]SS[S]'), 'time'),
             'Halle': (self.location, 'string'),
@@ -281,14 +291,21 @@ class Event:
     def __str__(self):
         info_list = (
             (i or '')
-            for i in (self.datetime.format() if self.datetime else None,
-                      self.location, self.league, self.opponent, self.scouter1,
-                      self.scouter2, self.scouter3))
-        return '{0}, {1}, {2}, {3}, {4}, {5}, {6}'.format(*info_list)
+            for i in (
+                self.id,
+                self.datetime.format() if self.datetime else None,
+                self.location,
+                self.league,
+                self.opponent,
+                self.scouter1,
+                self.scouter2,
+                self.scouter3))
+        return ', '.join(info_list)
     
     def to_json(self):
         return {
-            'datetime': self.datetime.format(),
+            'id': self.id,
+            'datetime': self.datetime.format() if self.datetime else None,
             'location': self.location,
             'league': self.league,
             'opponent': self.opponent,
