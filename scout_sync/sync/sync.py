@@ -159,6 +159,7 @@ class Event:
                 'dateTime': self.datetime.shift(hours=2).isoformat(),
                 'timeZone': TIMEZONE
             }
+
         else:
             logging.warning('Can not create calendar event: event has no date')
             return None
@@ -176,6 +177,7 @@ class Event:
                     "email": self.__emails[scouter],
                     "displayName": scouter
                 })
+
             except KeyError:
                 logging.warning(
                     f"Unknown scouter name in event at {self.datetime}: {scouter}"
@@ -222,6 +224,7 @@ class Event:
                 self.scouter1,
                 self.scouter2,
                 self.scouter3))
+        
         return ', '.join(info_list)
     
     def to_json(self):
@@ -235,32 +238,22 @@ class Event:
             'scouter2': self.scouter2,
             'scouter3': self.scouter3}
 
-    def is_same(self, event):
-        """Compare two Event objects
-        Returns True if date (not time), league and opponent are equal"""
-
-        self_date = self.datetime.date() if self.datetime else None
-        event_date = event.datetime.date() if event.datetime else None
-        return all([
-            self.league == event.league, self_date == event_date,
-            self.opponent == event.opponent
-        ])
-
-    def __eq__(self, event):
+    def __eq__(self, rhs):
         """Compare two Event objects
         Returns True if all attributes are equal"""
 
         self_scouter_list = [self.scouter1, self.scouter2, self.scouter3]
-        event_scouter_list = [event.scouter1, event.scouter2, event.scouter3]
-
-        if not (self.has_scouters and event.has_scouters):
-            self_scouter_list = event_scouter_list
+        rhs_scouter_list = [rhs.scouter1, rhs.scouter2, rhs.scouter3]
+        compare_scouters = self.has_scouters and rhs.has_scouters
 
         return all([
-            self.league == event.league, self.datetime == event.datetime,
-            self.opponent == event.opponent, self.location == event.location,
-            all(s in self_scouter_list for s in event_scouter_list),
-            all(s in event_scouter_list for s in self_scouter_list)
+            self.id == rhs.id,
+            self.datetime == rhs.datetime,
+            self.location == rhs.location,
+            self.league == rhs.league, 
+            self.opponent == rhs.opponent, 
+            all(s in self_scouter_list for s in rhs_scouter_list) or not compare_scouters,
+            all(s in rhs_scouter_list for s in self_scouter_list) or not compare_scouters
         ])
 
 
@@ -273,6 +266,7 @@ class CalendarHandler(GoogleCalendarAPI):
     def connect(self):
         try:
             self._connect_to_service()
+
         except Exception as e:
             logging.error(
                 f"Connection to calendar with ID {self._resource_id} failed: {e}"
@@ -288,8 +282,7 @@ class CalendarHandler(GoogleCalendarAPI):
 
         for ev in events:
             if not ev.datetime:
-                logging.warning(
-                    f"Can not add event to calendar {ev}: event has no date")
+                logging.warning(f"Can not add event to calendar {ev}: event has no date")
                 continue
 
             self._insert_event(ev.as_calendar_event())
@@ -344,31 +337,34 @@ class GSheetsTableHandler(GoogleSheetsAPI):
         config.get('GSHEETS_TABLE', 'captions_row', fallback=None) or 0)
 
     def __init__(self, spredsheet_id, sheet_name, sheet_id):
-        super().__init__(spredsheet_id, sheet_name, sheet_id, TIMEZONE,
-                         SIMULATE)
+        super().__init__(spredsheet_id, sheet_name, sheet_id, TIMEZONE, SIMULATE)
         self.__captions = []
         self.__index = {}
-        self.__ids = [
-        ]  # keeps track of which event is in which row of the sheet
+        self.__ids = []  # keeps track of which event is in which row of the sheet
 
     def connect(self):
         try:
             self._connect_to_service()
             for cell in self._get_range(self.__captions_row, dims=1):
-                self.__captions.extend([cell] if cell != 'Scouter' else
-                                       ['Scouter1', 'Scouter2', 'Scouter3'])
+                self.__captions.extend(
+                    [cell]
+                    if cell != 'Scouter'
+                    else ['Scouter1', 'Scouter2', 'Scouter3'])
 
             while self.__captions and not self.__captions[-1]:
                 del self.__captions[-1]
 
-            table_range = self._get_range(self.__captions_row + 1,
-                                          9999,
-                                          dims=2)
+            table_range = self._get_range(
+                self.__captions_row + 1,
+                9999,
+                dims=2)
+            
             self.__ids = [None] * self.__captions_row
             for id, row in enumerate(table_range):
                 if any(row):
                     self.__index[id] = row
                     self.__ids.append(id)
+
                 else:
                     self.__ids.append(None)
 
@@ -393,23 +389,24 @@ class GSheetsTableHandler(GoogleSheetsAPI):
                 date_entry = row[date_index]
                 time_entry = row[time_index]
                 date = GoogleSheetsAPI.serial_to_datetime(
-                    (date_entry if isinstance(date_entry,
-                                              (float, int)) else 0) +
-                    (time_entry if isinstance(time_entry,
-                                              (float, int)) else 0), TIMEZONE)
+                    (date_entry if isinstance(date_entry, (float, int)) else 0) +
+                    (time_entry if isinstance(time_entry, (float, int)) else 0),
+                    TIMEZONE)
+                
                 if date > (ev.datetime or arrow.Arrow(9999)):
                     row_no = self.__ids.index(id)
                     break
+
             else:
                 row_no = len(self.__ids)
 
-            insert_events.append(
-                (row_no, ev.as_gsheets_table_row(self.__captions)))
+            insert_events.append((row_no, ev.as_gsheets_table_row(self.__captions)))
 
         # sort by date in reverse order, so later insertions will be in the correct row
-        insert_events.sort(key=lambda e: e[1][date_index] +
-                           (e[1][time_index] or 0),
-                           reverse=True)
+        insert_events.sort(
+            key=lambda e: e[1][date_index] + (e[1][time_index] or 0),
+            reverse=True)
+        
         self._insert_rows(insert_events)
         for row_no, event in insert_events:
             new_id = max((self.__index.keys() or [-1])) + 1
@@ -426,15 +423,11 @@ class GSheetsTableHandler(GoogleSheetsAPI):
             return
 
         update_events = [{
-            'id':
-            id,
-            'row':
-            self.__ids.index(id),
-            'old_event':
-            Event.from_gsheets_table_row(self.__index[id], self.__captions),
-            'new_event':
-            event
-        } for id, event in events.items()]
+            'id': id,
+            'row': self.__ids.index(id),
+            'old_event': Event.from_gsheets_table_row(self.__index[id], self.__captions),
+            'new_event': event}
+            for id, event in events.items()]
 
         for event in update_events:
             if not event['new_event'].has_scouters:
@@ -445,12 +438,10 @@ class GSheetsTableHandler(GoogleSheetsAPI):
 
         self._update_rows([
             (ev['row'], ev['new_event'].as_gsheets_table_row(self.__captions))
-            for ev in update_events
-        ])
+            for ev in update_events])
 
         for ev in update_events:
-            self.__index[ev['id']] = ev['new_event'].as_gsheets_table_row(
-                self.__captions)
+            self.__index[ev['id']] = ev['new_event'].as_gsheets_table_row(self.__captions)
             logging.info(
                 f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in table:\n\t-\t{ev['old_event']}\n\t+\t{ev['new_event']}"
             )
@@ -480,8 +471,7 @@ class GSheetsTableHandler(GoogleSheetsAPI):
         try:
             events = {
                 i: Event.from_gsheets_table_row(row, self.__captions)
-                for i, row in self.__index.items()
-            }
+                for i, row in self.__index.items()}
 
         except (TypeError, ValueError) as e:
             logging.warning(f"Can not create event: {e}")
@@ -499,12 +489,14 @@ class ScheduleHandler:
     def __init__(self, leagues):
         self.__schedule = []
         self.__leagues = [
-            dict(
-                zip([
-                    'league_name', 'league_id', 'team_permanent_id',
-                    'team_season_id'
-                ], l)) for l in leagues
-        ]
+            dict(zip(['league_name', 'league_id', 'team_permanent_id', 'team_season_id'], l))
+            for l in leagues]
+
+        try:
+            with open(self.__LEAGUES_CACHE_FILE, 'rb') as f:
+                self.__matches = pickle.load(f)
+        except FileNotFoundError:
+            self.__matches = {}
 
     def connect(self):
         api_url = 'https://www.basketball-bund.net/rest'
@@ -514,13 +506,6 @@ class ScheduleHandler:
         self.__failed_league_downloads = []
         self.__failed_match_downloads = []
 
-        
-        try:
-            with open(self.__LEAGUES_CACHE_FILE, 'rb') as f:
-                match_leagues = pickle.load(f)
-        except FileNotFoundError:
-            match_leagues = {}
-        
         with requests.Session() as s:
             for league in self.__leagues:
                 # get the complete league schedule
@@ -543,7 +528,6 @@ class ScheduleHandler:
                     self.__failed_league_downloads.append(league_id)
                     logging.error(f"Can not download schedule for league {league_name} ({r.status_code}: {r.reason})")
                     continue
-
                 
                 team_matches = []
                 for match in league_schedule['data']['matches']:
@@ -586,11 +570,11 @@ class ScheduleHandler:
                         continue
 
                     self.__schedule.append((match_info['data'], league_name))
-                    match_leagues[match_id] = league_id
+                    self.__matches[match_id] = league_id
 
         
         with open(self.__LEAGUES_CACHE_FILE, 'wb') as f:
-            pickle.dump(match_leagues, f)
+            pickle.dump(self.__matches, f)
 
         logging.info(f"Downloaded {len(self.__schedule)} game schedules from {len(self.__leagues)} leagues")
         return True
@@ -606,15 +590,19 @@ class ScheduleHandler:
         return {i: event for i, event in enumerate(events)}
 
     def failed(self, match_id):
-        """Check if the the match info was downloaded correctly"""
+        """Check if the match info was downloaded correctly"""
         if match_id in self.__failed_match_downloads:
             return True
         
-        match_leages = pickle.load(self.__LEAGUES_CACHE_FILE)
-        if match_leages[match_id] in self.__failed_league_downloads:
+        if self.__matches[match_id] in self.__failed_league_downloads:
             return True
 
         return False
+    
+    def is_schedule_match_id(self, match_id):
+        """Check if the match is part of a schedule
+        (or a cumstom created match)"""
+        return match_id in self.__matches
     
     def __validate_league(self, league):
         """Check if all relevant properties of the downloaded league
@@ -674,23 +662,21 @@ def sync(source, dest):
 
     start_time = time.time()
 
-    table_handler = (GSheetsTableHandler,
-                        config.get('GSHEETS_TABLE', 'id'),
-                        config.get('GSHEETS_TABLE',
-                                'sheet_name',
-                                fallback=None),
-                        config.get('GSHEETS_TABLE', 'sheet_id',
-                                fallback=None))
+    table_handler = (
+        GSheetsTableHandler,
+        config.get('GSHEETS_TABLE', 'id'),
+        config.get('GSHEETS_TABLE', 'sheet_name', fallback=None),
+        config.get('GSHEETS_TABLE', 'sheet_id', fallback=None))
 
     schedule_leagues = [
         config.getlist('SCHEDULE_LEAGUES', o)
-        for o in config['SCHEDULE_LEAGUES'].keys()
-    ]
+        for o in config['SCHEDULE_LEAGUES'].keys()]
+    
     handler = {
         'calendar': (CalendarHandler, config.get('CALENDAR', 'id')),
         'table': table_handler,
-        'schedule': (ScheduleHandler, schedule_leagues)
-    }
+        'schedule': (ScheduleHandler, schedule_leagues)}
+    
     source_hdl = handler[source][0](*handler[source][1:])
     dest_hdl = handler[dest][0](*handler[dest][1:])
 
@@ -705,26 +691,28 @@ def sync(source, dest):
     delete_events = list(dest_events.keys())
 
     # determine which events to add, delete and update
-    # if the source is the schedule, ignore leagues, that are not present in the leage definitions (to allow custom events)
     if isinstance(source_hdl, ScheduleHandler):
-        leagues = [l[0] for l in schedule_leagues]
-
-        for id in dest_events.keys():
-            if dest_events[id].league not in leagues:
-                delete_events.remove(id)
+        for event_id, ev in dest_events.items():
+            if (not source_hdl.is_schedule_match_id(ev.id) or source_hdl.failed(ev.id)):
+                delete_events.remove(event_id)
 
     for ev in source_events:
-        for id in dest_events:
-            if ev == dest_events[id]:
-                if id in delete_events:
-                    delete_events.remove(id)
-                break
-            elif ev.is_same(dest_events[id]):
-                if id not in update_events:
-                    update_events[id] = ev
-                if id in delete_events:
-                    delete_events.remove(id)
-                break
+        for event_id in dest_events:
+            if ev.id == dest_events[event_id].id:
+                if ev == dest_events[event_id]:
+                    if event_id in delete_events:
+                        delete_events.remove(event_id)
+
+                    break
+
+                else:
+                    if event_id not in update_events:
+                        update_events[event_id] = ev
+
+                    if event_id in delete_events:
+                        delete_events.remove(event_id)
+
+                    break
         else:
             if ev not in new_events:
                 new_events.append(ev)
