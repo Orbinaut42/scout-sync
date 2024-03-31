@@ -96,7 +96,7 @@ class Event:
                     f"Unknown email in calendar event at {e.datetime}: {a['email']}")
 
         e = cls(
-            id = event['id'],
+            id = event.get('extendedProperties', {}).get('private', {}).get('matchId'),
             datetime = arrow.get(event['start']['dateTime']),
             location = event.get('location', None),
             league = event.get('summary', '').replace('Scouting ', '') or None,
@@ -116,7 +116,7 @@ class Event:
     def from_JSON_schedule(cls, event, league_name):
         """Create an event from a JSON object (DBB schedule)"""
         try:
-            datetime = arrow.get(f'{event["kickoffDate"]}T{event["kickoffTime"]}', tzinfo=TIMEZONE)
+            datetime = arrow.get(f"{event['kickoffDate']}T{event['kickoffTime']}", tzinfo=TIMEZONE)
         except:
             datetime = arrow.get(2147483648, tzinfo=TIMEZONE)
         
@@ -132,10 +132,10 @@ class Event:
         try:
             opponent = event['guestTeam']['teamname']
         except:
-            opponent = ''
+            opponent = None
 
         e = cls(
-            id = event["matchId"],
+            id = event['matchNo'],
             datetime = datetime,
             location = location,
             league = league_name,
@@ -147,9 +147,8 @@ class Event:
 
     def as_calendar_event(self):
         """create a representation of the event, that can be passed to the Google Calendar API"""
-
         event = {}
-        event['id'] = self.id
+        event['extendedProperties'] = {'private': {'matchId': self.id}}
         if self.datetime:
             event['start'] = {
                 'dateTime': self.datetime.isoformat(),
@@ -570,7 +569,7 @@ class ScheduleHandler:
                         continue
 
                     self.__schedule.append((match_info['data'], league_name))
-                    self.__matches[match_id] = league_id
+                    self.__matches[str(match_id)] = league_id
 
         
         with open(self.__LEAGUES_CACHE_FILE, 'wb') as f:
