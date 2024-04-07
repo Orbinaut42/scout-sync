@@ -32,7 +32,8 @@ class Event:
             opponent=None,
             scouter1=None,
             scouter2=None,
-            scouter3=None):
+            scouter3=None,
+            schedule_info=None):
         self.id = str(id)
         self.datetime = datetime
         self.location = location
@@ -42,6 +43,7 @@ class Event:
         self.scouter2 = scouter2
         self.scouter3 = scouter3
         self.has_scouters = any([self.scouter1, self.scouter2, self.scouter3])
+        self.schedule_info = schedule_info
 
     @classmethod
     def from_gsheets_table_row(cls, row, captions):
@@ -95,15 +97,23 @@ class Event:
                 logging.warning(
                     f"Unknown email in calendar event at {e.datetime}: {a['email']}")
 
+        event_extended_properties = event.get('extendedProperties', {}).get('private', {})
+        schedule_info = {
+                'match_id': event_extended_properties.get('matchId'),
+                'league_id': event_extended_properties.get('leagueId')}
+        if schedule_info['match_id'] is None and schedule_info['match_id'] is None:
+            schedule_info = None
+
         e = cls(
-            id = event.get('extendedProperties', {}).get('private', {}).get('matchId'),
+            id = event_extended_properties.get('matchNo'),
             datetime = arrow.get(event['start']['dateTime']),
             location = event.get('location', None),
             league = event.get('summary', '').replace('Scouting ', '') or None,
             opponent = event.get('description', None),
             scouter1 = (scouter_list[0] if len(scouter_list) > 0 else None),
             scouter2 = (scouter_list[1] if len(scouter_list) > 1 else None),
-            scouter3 = (scouter_list[2] if len(scouter_list) > 2 else None))
+            scouter3 = (scouter_list[2] if len(scouter_list) > 2 else None),
+            schedule_info = schedule_info)
 
         e.has_scouters = True
 
@@ -139,7 +149,10 @@ class Event:
             datetime = datetime,
             location = location,
             league = league_name,
-            opponent = opponent)
+            opponent = opponent,
+            schedule_info = {
+                'match_id': str(event['matchId']),
+                'league_id': str(event['ligaData']['ligaId'])})
         
         e.has_scouters = False
             
@@ -148,7 +161,13 @@ class Event:
     def as_calendar_event(self):
         """create a representation of the event, that can be passed to the Google Calendar API"""
         event = {}
-        event['extendedProperties'] = {'private': {'matchId': self.id}}
+
+        event['extendedProperties'] = {'private': {'matchNo': self.id}}
+        if self.schedule_info:
+            event['extendedProperties']['private'].update({
+                'matchId': self.schedule_info.get('match_id'),
+                'leagueId': self.schedule_info.get('league_id')})
+            
         if self.datetime:
             event['start'] = {
                 'dateTime': self.datetime.isoformat(),
@@ -226,16 +245,16 @@ class Event:
         
         return ', '.join(info_list)
     
-    def to_json(self):
-        return {
-            'id': self.id,
-            'datetime': self.datetime.format() if self.datetime else None,
-            'location': self.location,
-            'league': self.league,
-            'opponent': self.opponent,
-            'scouter1': self.scouter1,
-            'scouter2': self.scouter2,
-            'scouter3': self.scouter3}
+    # def to_json(self):
+    #     return {
+    #         'id': self.id,
+    #         'datetime': self.datetime.format() if self.datetime else None,
+    #         'location': self.location,
+    #         'league': self.league,
+    #         'opponent': self.opponent,
+    #         'scouter1': self.scouter1,
+    #         'scouter2': self.scouter2,
+    #         'scouter3': self.scouter3}
 
     def __eq__(self, rhs):
         """Compare two Event objects
@@ -483,19 +502,12 @@ class ScheduleHandler:
 
     arenas = dict(config['SCHEDULE_ARENAS'])
     __REQUEST_TIMEOUT = config.getint('COMMON', 'schedule_request_timeout')
-    __LEAGUES_CACHE_FILE = 'schedule_leagues.cache'
 
     def __init__(self, leagues):
         self.__schedule = []
         self.__leagues = [
             dict(zip(['league_name', 'league_id', 'team_permanent_id', 'team_season_id'], l))
             for l in leagues]
-
-        try:
-            with open(self.__LEAGUES_CACHE_FILE, 'rb') as f:
-                self.__matches = pickle.load(f)
-        except FileNotFoundError:
-            self.__matches = {}
 
     def connect(self):
         api_url = 'https://www.basketball-bund.net/rest'
@@ -520,12 +532,12 @@ class ScheduleHandler:
                             raise ValueError()
 
                     except (json.decoder.JSONDecodeError, ValueError):
-                        self.__failed_league_downloads.append(league_id)
-                        logging.error(f"Can not read schedule for league {league_name}")
+                        self.__failed_league_downloads.append(str(league_id))
+                        logging.warning(f"Can not read schedule for league {league_name}")
                         continue
                 else:
-                    self.__failed_league_downloads.append(league_id)
-                    logging.error(f"Can not download schedule for league {league_name} ({r.status_code}: {r.reason})")
+                    self.__failed_league_downloads.append(str(league_id))
+                    logging.warning(f"Can not download schedule for league {league_name} ({r.status_code}: {r.reason})")
                     continue
                 
                 team_matches = []
@@ -537,7 +549,7 @@ class ScheduleHandler:
                             match_id = None
 
                         if match_id is not None:
-                            self.__failed_match_downloads.append(match_id)
+                            self.__failed_match_downloads.append(str(match_id))
 
                         logging.warning(f"Can not read game {match_id} from league {league_name}")
                         continue
@@ -559,21 +571,16 @@ class ScheduleHandler:
                             if not self.__validate_match_info(match_info):
                                 raise ValueError()
                             
-                        except (json.decoder.JSONDecodeError):
-                            self.__failed_match_downloads.append(match_id)
-                            logging.error(f"Can not read game details for game {match_id} for league {league_name}")
+                        except (json.decoder.JSONDecodeError, ValueError):
+                            self.__failed_match_downloads.append(str(match_id))
+                            logging.warning(f"Can not read game details for game {match_id} for league {league_name}")
                             continue
                     else:
-                        self.__failed_match_downloads.append(match_id)
-                        logging.error(f"Can not download game details for game {match_id} for league {league_name} ({r.status_code}: {r.reason})")
+                        self.__failed_match_downloads.append(str(match_id))
+                        logging.warning(f"Can not download game details for game {match_id} for league {league_name} ({r.status_code}: {r.reason})")
                         continue
 
                     self.__schedule.append((match_info['data'], league_name))
-                    self.__matches[str(match_id)] = league_id
-
-        
-        with open(self.__LEAGUES_CACHE_FILE, 'wb') as f:
-            pickle.dump(self.__matches, f)
 
         logging.info(f"Downloaded {len(self.__schedule)} game schedules from {len(self.__leagues)} leagues")
         return True
@@ -588,21 +595,12 @@ class ScheduleHandler:
 
         return {i: event for i, event in enumerate(events)}
 
-    def failed(self, match_id):
+    def failed(self, match):
         """Check if the match info was downloaded correctly"""
-        if match_id in self.__failed_match_downloads:
-            return True
-        
-        if self.__matches[match_id] in self.__failed_league_downloads:
-            return True
+        return (
+            match.schedule_info['match_id'] in self.__failed_match_downloads or
+            match.schedule_info['league_id'] in self.__failed_league_downloads)
 
-        return False
-    
-    def is_schedule_match_id(self, match_id):
-        """Check if the match is part of a schedule
-        (or a cumstom created match)"""
-        return match_id in self.__matches
-    
     def __validate_league(self, league):
         """Check if all relevant properties of the downloaded league
         are present and readable"""
@@ -640,7 +638,9 @@ class ScheduleHandler:
         try:
             match_info_data = match_info['data']
             conditions = [
+                match_info_data['matchNo'] is not None,
                 match_info_data['matchId'] is not None,
+                match_info_data['ligaData']['ligaId'] is not None,
                 match_info_data['abgesagt'] is not None,
                 match_info_data['verzicht'] is not None]
             
@@ -689,12 +689,13 @@ def sync(source, dest):
     update_events = {}
     delete_events = list(dest_events.keys())
 
-    # determine which events to add, delete and update
     if isinstance(source_hdl, ScheduleHandler):
-        for event_id, ev in dest_events.items():
-            if (not source_hdl.is_schedule_match_id(ev.id) or source_hdl.failed(ev.id)):
-                delete_events.remove(event_id)
+        # ignore events that are not part of a DBB schedule or where the download failed
+        for ev_id, ev in dest_events.items():
+            if ev.schedule_info is None or source_hdl.failed(ev):
+                delete_events.remove(ev_id)
 
+    # determine which events to add, delete and update
     for ev in source_events:
         for event_id in dest_events:
             if ev.id == dest_events[event_id].id:
