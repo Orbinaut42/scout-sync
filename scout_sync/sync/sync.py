@@ -108,6 +108,22 @@ class Event:
                 'league_id': str(event['ligaData']['ligaId'])})
             
         return e
+    
+    @classmethod
+    def from_json(cls, event):
+        """create an event from a json object"""
+        e = cls(
+            id = event['id'],
+            datetime = arrow.get(event['datetime'], tzinfo=TIMEZONE),
+            location = event['location'],
+            league = event['league'],
+            opponent = event['opponent'],
+            scouters = event['scouters'],
+            schedule_info = {
+                'match_id': event['match_id'],
+                'league_id': event['liga_id']})
+            
+        return e
 
     def as_calendar_event(self):
         """create a representation of the event, that can be passed to the Google Calendar API"""
@@ -161,6 +177,19 @@ class Event:
 
         return event
 
+    def as_json(self):
+        """return a json representation of the event"""
+        return {
+            'id': self.id,
+            'datetime': self.datetime.format() if self.datetime else None,
+            'location': self.location,
+            'league': self.league,
+            'opponent': self.opponent,
+            'scouters': self.scouters or [],
+            'schedule_info': {
+                'match_id': self.schedule_info.get('match_id'),
+                'league_id': self.schedule_info.get('league_id')}}
+
     def __str__(self):
         info_list = (
             (i or '')
@@ -173,17 +202,6 @@ class Event:
                 *(self.scouters or [])))
         
         return ', '.join(info_list)
-    
-    # def to_json(self):
-    #     return {
-    #         'id': self.id,
-    #         'datetime': self.datetime.format() if self.datetime else None,
-    #         'location': self.location,
-    #         'league': self.league,
-    #         'opponent': self.opponent,
-    #         'scouter1': self.scouter1,
-    #         'scouter2': self.scouter2,
-    #         'scouter3': self.scouter3}
 
     def __eq__(self, rhs):
         """Compare two Event objects
