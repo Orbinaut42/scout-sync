@@ -29,19 +29,14 @@ class Event:
             location=None,
             league=None,
             opponent=None,
-            scouter1=None,
-            scouter2=None,
-            scouter3=None,
+            scouters=None,
             schedule_info=None):
         self.id = str(id)
         self.datetime = datetime
         self.location = location
         self.league = league
         self.opponent = opponent
-        self.scouter1 = scouter1
-        self.scouter2 = scouter2
-        self.scouter3 = scouter3
-        self.has_scouters = any([self.scouter1, self.scouter2, self.scouter3])
+        self.scouters = scouters
         self.schedule_info = schedule_info
 
     @classmethod
@@ -72,12 +67,8 @@ class Event:
             location = event.get('location', None),
             league = event.get('summary', '').replace('Scouting ', '') or None,
             opponent = event.get('description', None),
-            scouter1 = (scouter_list[0] if len(scouter_list) > 0 else None),
-            scouter2 = (scouter_list[1] if len(scouter_list) > 1 else None),
-            scouter3 = (scouter_list[2] if len(scouter_list) > 2 else None),
+            scouters = scouter_list,
             schedule_info = schedule_info)
-
-        e.has_scouters = True
 
         if not e.league:
             logging.warning(f"Calendar event at {e.datetime} has no league")
@@ -115,8 +106,6 @@ class Event:
             schedule_info = {
                 'match_id': str(event['matchId']),
                 'league_id': str(event['ligaData']['ligaId'])})
-        
-        e.has_scouters = False
             
         return e
 
@@ -148,20 +137,19 @@ class Event:
         event['summary'] = "Scouting " + self.league
         event['description'] = self.opponent
 
-        event['attendees'] = []
-        scouterlist = [self.scouter1, self.scouter2, self.scouter3]
+        if self.scouters is not None:
+            event['attendees'] = []
+            for scouter in self.scouters:
+                try:
+                    event['attendees'].append({
+                        "email": self.__emails[scouter],
+                        "displayName": scouter
+                    })
 
-        for scouter in [s for s in scouterlist if s and s.strip()]:
-            try:
-                event['attendees'].append({
-                    "email": self.__emails[scouter],
-                    "displayName": scouter
-                })
-
-            except KeyError:
-                logging.warning(
-                    f"Unknown scouter name in event at {self.datetime}: {scouter}"
-                )
+                except KeyError:
+                    logging.warning(
+                        f"Unknown scouter name in event at {self.datetime}: {scouter}"
+                    )
 
         event['reminders'] = {
             'useDefault': False,
@@ -182,9 +170,7 @@ class Event:
                 self.location,
                 self.league,
                 self.opponent,
-                self.scouter1,
-                self.scouter2,
-                self.scouter3))
+                *(self.scouters or [])))
         
         return ', '.join(info_list)
     
@@ -202,10 +188,7 @@ class Event:
     def __eq__(self, rhs):
         """Compare two Event objects
         Returns True if all attributes are equal"""
-
-        self_scouter_list = [self.scouter1, self.scouter2, self.scouter3]
-        rhs_scouter_list = [rhs.scouter1, rhs.scouter2, rhs.scouter3]
-        compare_scouters = self.has_scouters and rhs.has_scouters
+        compare_scouters = self.scouters is not None and rhs.scouters is not None
 
         return all([
             self.id == rhs.id,
@@ -213,8 +196,8 @@ class Event:
             self.location == rhs.location,
             self.league == rhs.league, 
             self.opponent == rhs.opponent, 
-            all(s in self_scouter_list for s in rhs_scouter_list) or not compare_scouters,
-            all(s in rhs_scouter_list for s in self_scouter_list) or not compare_scouters
+            all(s in self.scouters for s in rhs.scouters) or not compare_scouters,
+            len(self.scouters) == len(rhs.scouters) or not compare_scouters
         ])
 
 
@@ -259,11 +242,8 @@ class CalendarHandler(GoogleCalendarAPI):
             cal_ev = self._get_single_event(id)
             old_ev = Event.from_calendar_event(cal_ev)
             new_ev = events[id]
-            if not new_ev.has_scouters:
-                new_ev.scouter1 = old_ev.scouter1
-                new_ev.scouter2 = old_ev.scouter2
-                new_ev.scouter3 = old_ev.scouter3
-                new_ev.has_scouters = True
+            if new_ev.scouters is None:
+                new_ev.scouters = old_ev.scouters
 
             self._update_event(id, cal_ev, new_ev.as_calendar_event())
             logging.info(
