@@ -8,6 +8,9 @@ port = 8000
 # timeout for requests to the schedules API
 schedule_request_timeout = 20
 
+# events cache file name
+web_cache_file = events.json
+
 simulate = False
 
 [GOOGLE_API]
@@ -19,15 +22,6 @@ service_account_info =
 # Google Calendar ID
 # dont use calendar id 'primary' with service account authentication
 id =
-
-[GSHEETS_TABLE]
-# Google Sheets spreadsheet and sheet ID
-id = 
-sheet_name =
-sheet_id =
-
-# the row number, that contains the column captions (one-indexed)
-captions_row =
 
 [SCHEDULE_LEAGUES]
 # key = league name, league ID, teamPermanentId

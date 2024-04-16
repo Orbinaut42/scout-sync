@@ -385,7 +385,7 @@ class ScheduleHandler:
             if not cancelled:
                 events.append(Event.from_DBB_schedule(match, league_name))
 
-        return {i: event for i, event in enumerate(events)}
+        return events
 
     def failed(self, match):
         """Check if the match info was downloaded correctly"""
@@ -443,6 +443,23 @@ class ScheduleHandler:
             return False
         
         return True
+
+
+class WebCacheHandler():
+    def __init__(self):
+        try:
+            with open(config.get('COMMON', 'web_cache_file'), 'r') as web_cache_file:
+                self.__events = json.load(web_cache_file)
+        except FileNotFoundError:
+            self.__events = []
+    
+    def list_events(self):
+        return [Event.from_json(e) for e in self.__events]
+
+    def store_events(self, events):
+        with open(config.get('COMMON', 'web_cache_file'), 'w') as web_cache_file:
+            json.dump([e.as_json() for e in events], web_cache_file)
+
 
 def sync(source, dest):
     """Start the syncronisation from 'source' to 'dest'
