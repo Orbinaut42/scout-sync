@@ -99,17 +99,17 @@ class GoogleCalendarAPI(_GoogleAPI):
         if not self._GoogleAPI__simulate:
             act.execute()
 
-    def _update_event(self, id, old_event, new_event):
+    def _update_event(self, id, event, old_event):
         """Updates the event with the specified ID
         the events should be passed as a dicts"""
-
         old_date = arrow.get(old_event['start']['dateTime'])
-        new_date = arrow.get(new_event['start']['dateTime'])
+        new_date = arrow.get(event['start']['dateTime'])
         now = arrow.now(self._GoogleAPI__timezone)
+
         act = self._service.events().update(
             calendarId=self._resource_id,
             eventId=id,
-            body=new_event,
+            body=event,
             sendUpdates='all' if old_date > now or new_date > now else 'none')
         
         if not self._GoogleAPI__simulate:

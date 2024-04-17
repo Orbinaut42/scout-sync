@@ -164,8 +164,7 @@ class Event:
 
                 except KeyError:
                     logging.warning(
-                        f"Unknown scouter name in event at {self.datetime}: {scouter}"
-                    )
+                        f"Unknown scouter name in event at {self.datetime}: {scouter}")
 
         event['reminders'] = {
             'useDefault': False,
@@ -215,8 +214,7 @@ class Event:
             self.league == rhs.league, 
             self.opponent == rhs.opponent, 
             all(s in self.scouters for s in rhs.scouters) or not compare_scouters,
-            len(self.scouters) == len(rhs.scouters) or not compare_scouters
-        ])
+            len(self.scouters) == len(rhs.scouters) or not compare_scouters])
 
 
 class CalendarHandler(GoogleCalendarAPI):
@@ -224,6 +222,7 @@ class CalendarHandler(GoogleCalendarAPI):
 
     def __init__(self, calendar_id):
         super().__init__(calendar_id, TIMEZONE, SIMULATE)
+        self.__ids = None
 
     def connect(self):
         try:
@@ -231,8 +230,8 @@ class CalendarHandler(GoogleCalendarAPI):
 
         except Exception as e:
             logging.error(
-                f"Connection to calendar with ID {self._resource_id} failed: {e}"
-            )
+                f"Connection to calendar with ID {self._resource_id} failed: {e}")
+            
             return False
 
         logging.info(f"Connected to calendar: {self._resource_id}")
@@ -249,44 +248,53 @@ class CalendarHandler(GoogleCalendarAPI):
 
             self._insert_event(ev.as_calendar_event())
             logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Added event to calendar:\n\t\t{ev}"
-            )
+                f"{'(SIMULATED) ' if SIMULATE else ''}Added event to calendar:\n\t\t{ev}")
 
     def update_events(self, events):
         if not self._service:
             return
 
-        for id in events:
-            cal_ev = self._get_single_event(id)
+        for ev in events:
+            cal_id = self.__ids.get(ev.id)
+            if cal_id is None:
+                raise ValueError(f"Can not update event {ev.id}: event is not in calendar!")
+            
+            cal_ev = self._get_single_event(cal_id)
             old_ev = Event.from_calendar_event(cal_ev)
-            new_ev = events[id]
-            if new_ev.scouters is None:
-                new_ev.scouters = old_ev.scouters
 
-            self._update_event(id, cal_ev, new_ev.as_calendar_event())
+            self._update_event(cal_id, ev.as_calendar_event(), cal_ev)
             logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in calendar:\n\t-\t{old_ev}\n\t+\t{new_ev}"
-            )
+                f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in calendar:\n\t-\t{old_ev}\n\t+\t{ev}")
 
-    def delete_events(self, ids):
+    def delete_events(self, events):
         if not self._service:
             return
 
-        for id in ids:
-            cal_ev = self._get_single_event(id)
+        for ev in events:
+            cal_id = self.__ids.get(ev.id)
+            if cal_id is None:
+                raise ValueError(f"Can not delete event {ev.id}: event is not in calendar!")
+            
+            cal_ev = self._get_single_event(cal_id)
             old_ev = Event.from_calendar_event(cal_ev)
 
-            self._delete_event(id, cal_ev)
+            self._delete_event(cal_id, cal_ev)
             logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Deleted event in calendar:\n\t\t{old_ev}"
-            )
+                f"{'(SIMULATED) ' if SIMULATE else ''}Deleted event in calendar:\n\t\t{old_ev}")
 
     def list_events(self):
         if not self._service:
             return
 
-        ev_list = self._get_all_events()
-        return {ev['id']: Event.from_calendar_event(ev) for ev in ev_list}
+        calendar_events = self._get_all_events()
+        self.__ids = {}
+        events = []
+        for ce in calendar_events:
+            event = Event.from_calendar_event(ce)
+            self.__ids[event.id] = ce['id']
+            events.append(event)
+
+        return events
 
 
 class ScheduleHandler:
@@ -446,88 +454,95 @@ class ScheduleHandler:
 
 
 class WebCacheHandler():
-    def __init__(self):
+    def __init__(self, chache_file_name):
         try:
-            with open(config.get('COMMON', 'web_cache_file'), 'r') as web_cache_file:
+            with open(chache_file_name, 'r') as web_cache_file:
                 self.__events = json.load(web_cache_file)
         except FileNotFoundError:
-            self.__events = []
+            self.__events = None
     
     def list_events(self):
-        return [Event.from_json(e) for e in self.__events]
+        if self.__events is not None:
+            return [Event.from_json(e) for e in self.__events]
 
     def store_events(self, events):
         with open(config.get('COMMON', 'web_cache_file'), 'w') as web_cache_file:
             json.dump([e.as_json() for e in events], web_cache_file)
 
 
-def sync(source, dest):
-    """Start the syncronisation from 'source' to 'dest'
-    Allowed values for source are: schedule, calendar
-    Allowed values for destination are: calendar"""
-
-    logging.info(f"Starting sync from {source} to {dest}")
+def sync(source):
+    """Synchronise the events from source to the calendar and web cache.
+    valid scources are 'schedule' and 'cache'"""
 
     start_time = time.time()
+    logging.info(f"Starting sync from {source}")
 
-    schedule_leagues = [
-        config.getlist('SCHEDULE_LEAGUES', o)
-        for o in config['SCHEDULE_LEAGUES'].keys()]
+    calendar_hdl = CalendarHandler(config.get('CALENDAR', 'id'))
+    if not calendar_hdl.connect():
+        raise RuntimeError('Connection to the calendar failed.')
     
-    handler = {
-        'calendar': (CalendarHandler, config.get('CALENDAR', 'id')),
-        'schedule': (ScheduleHandler, schedule_leagues)}
-    
-    source_hdl = handler[source][0](*handler[source][1:])
-    dest_hdl = handler[dest][0](*handler[dest][1:])
+    cache_hdl = WebCacheHandler(config.get('COMMON', 'web_cache_file'))
 
-    if not (source_hdl.connect() and dest_hdl.connect()):
-        raise RuntimeError('Connection to the target failed.')
+    if source == 'schedule':
+        schedule_leagues = [
+            config.getlist('SCHEDULE_LEAGUES', o)
+            for o in config['SCHEDULE_LEAGUES'].keys()]
+        
+        schedule_hdl = ScheduleHandler(schedule_leagues)
+        if not schedule_hdl.connect():
+            raise RuntimeError('DBB schedule download failed.')
 
-    source_events = source_hdl.list_events().values()
-    dest_events = dest_hdl.list_events()
+        source_hdl = schedule_hdl
+
+    elif source == 'cache':
+        source_hdl = cache_hdl
+
+    else:
+        raise ValueError(f"Invalid value for source: {source}!")
+
+    source_events = {e.id: e for e in source_hdl.list_events()}
+    calendar_events = {e.id. e for e in calendar_hdl.list_events()}
 
     new_events = []
-    update_events = {}
-    delete_events = list(dest_events.keys())
+    update_events = []
+    delete_events = []
+    all_events = []
 
-    if isinstance(source_hdl, ScheduleHandler):
-        # ignore events that are not part of a DBB schedule or where the download failed
-        for ev_id, ev in dest_events.items():
-            if ev.schedule_info is None or source_hdl.failed(ev):
-                delete_events.remove(ev_id)
+    # determine which events to add and update
+    for src_id, src_ev in source_events.items():
+        if src_id not in calendar_events:
+            if src_ev not in new_events:
+                new_events.append(src_ev)
 
-    # determine which events to add, delete and update
-    for ev in source_events:
-        for event_id in dest_events:
-            if ev.id == dest_events[event_id].id:
-                if ev == dest_events[event_id]:
-                    if event_id in delete_events:
-                        delete_events.remove(event_id)
-
-                    break
-
-                else:
-                    if event_id not in update_events:
-                        update_events[event_id] = ev
-
-                    if event_id in delete_events:
-                        delete_events.remove(event_id)
-
-                    break
         else:
-            if ev not in new_events:
-                new_events.append(ev)
+            cal_ev = calendar_events[src_id]
+            if src_ev.scouters is None:
+                src_ev.scouters = cal_ev.scouters
 
-    dest_hdl.add_events(new_events)
-    dest_hdl.update_events(update_events)
-    dest_hdl.delete_events(delete_events)
+            if src_ev != cal_ev:
+                if src_ev not in update_events:
+                    update_events.append(src_ev)
+
+        if src_ev not in all_events:    
+            all_events.append(src_ev)
+    
+    # determine which events to delete
+    for cal_id, cal_ev in calendar_events.items():
+        if cal_id not in source_events:
+            # ignore events that are not part of a DBB schedule or where the download failed
+            if source == 'schedule':
+                if cal_ev.schedule_info is None or source_hdl.failed(cal_ev):
+                    continue
+
+            if cal_ev not in delete_events:
+                delete_events.append(cal_ev)
+
+    calendar_hdl.add_events(new_events)
+    calendar_hdl.update_events(update_events)
+    calendar_hdl.delete_events(delete_events)
+    cache_hdl.store_events(all_events)
 
     end_time = time.time()
     logging.info(f"Sync finished ({(end_time-start_time):.0f}s)")
 
-    if isinstance(dest_hdl, CalendarHandler):
-        # return the current list of events
-        return dest_hdl.list_events()
-
-    return True
+    return
