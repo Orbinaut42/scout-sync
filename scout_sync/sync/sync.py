@@ -119,9 +119,7 @@ class Event:
             league = event['league'],
             opponent = event['opponent'],
             scouters = event['scouters'],
-            schedule_info = {
-                'match_id': event['match_id'],
-                'league_id': event['liga_id']})
+            schedule_info = event['schedule_info'])
             
         return e
 
@@ -185,9 +183,7 @@ class Event:
             'league': self.league,
             'opponent': self.opponent,
             'scouters': self.scouters or [],
-            'schedule_info': {
-                'match_id': self.schedule_info.get('match_id'),
-                'league_id': self.schedule_info.get('league_id')}}
+            'schedule_info': self.schedule_info}
 
     def __str__(self):
         info_list = (
@@ -212,9 +208,10 @@ class Event:
             self.datetime == rhs.datetime,
             self.location == rhs.location,
             self.league == rhs.league, 
-            self.opponent == rhs.opponent, 
-            all(s in self.scouters for s in rhs.scouters) or not compare_scouters,
-            len(self.scouters) == len(rhs.scouters) or not compare_scouters])
+            self.opponent == rhs.opponent,
+            not compare_scouters or (
+                all(s in self.scouters for s in rhs.scouters) and
+                len(self.scouters) == len(rhs.scouters))])
 
 
 class CalendarHandler(GoogleCalendarAPI):
@@ -458,7 +455,7 @@ class WebCacheHandler():
         try:
             with open(chache_file_name, 'r') as web_cache_file:
                 self.__events = json.load(web_cache_file)
-        except FileNotFoundError:
+        except (FileNotFoundError, json.decoder.JSONDecodeError):
             self.__events = None
     
     def list_events(self):
@@ -501,7 +498,7 @@ def sync(source):
         raise ValueError(f"Invalid value for source: {source}!")
 
     source_events = {e.id: e for e in source_hdl.list_events()}
-    calendar_events = {e.id. e for e in calendar_hdl.list_events()}
+    calendar_events = {e.id: e for e in calendar_hdl.list_events()}
 
     new_events = []
     update_events = []
@@ -532,6 +529,9 @@ def sync(source):
             # ignore events that are not part of a DBB schedule or where the download failed
             if source == 'schedule':
                 if cal_ev.schedule_info is None or source_hdl.failed(cal_ev):
+                    if cal_ev not in all_events:    
+                        all_events.append(cal_ev)
+
                     continue
 
             if cal_ev not in delete_events:

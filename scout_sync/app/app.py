@@ -82,9 +82,10 @@ def events():
 def start_sync_job():
     """start a scheduler with the calendar syncronisation job defined in the SYNC_JOB config section"""
 
-    interval = config.get('SYNC_JOB', 'interval')
-    if interval is None:
+    if not 'SYNC_JOB' in config:
         return
+    
+    interval = config.getint('SYNC_JOB', 'interval')
     
     scheduler = BackgroundScheduler(timzone=config.get('COMMON', 'timezone'))
     scheduler.add_job(
