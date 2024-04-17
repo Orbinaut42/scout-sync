@@ -32,5 +32,5 @@ id =
 [EMAILS]
 # Name = e@mail.com
 
-[SYNC_JOBS]
-# job = from, to, interval in minutes
+[SYNC_JOB]
+# interval = 60

@@ -1,13 +1,12 @@
 import sys
 import os
 import logging
-import pickle
-import requests
+import json
 import arrow
 from flask import Flask, request, abort
 from apscheduler.schedulers.background import BackgroundScheduler
 from ..config import config
-from ..sync import sync
+from ..sync import sync, Event
 
 logging.basicConfig(
     filename=config.get('COMMON', 'log_file'),
@@ -20,7 +19,6 @@ logging.getLogger('apscheduler').setLevel(logging.ERROR)
 sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.exception(
     exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
 
-EVENTS_CACHE_FILE = 'events.cache'
 app = Flask(
     'scout_sync',
     static_folder=os.path.join(os.path.dirname(__file__), 'static'))
@@ -33,33 +31,28 @@ def root():
     return ''
 
 
-@app.post('/sync')
-def sync_():
-    """POST access point for sync requests
+@app.post('/edit')
+def edit():
+    """POST access point for edits from webpage
     
     Request data should be:
-    {from: [source], to: [target]}"""
+    {events: [json_events]}"""
 
-    targets = ['calendar', 'schedule', 'table']
-    source = request.form.get('from')
-    dest = request.form.get('to')
-    logging.info(
-        f'Sync request from {request.access_route[0]} ({source} -> {dest})')
+    logging.info(f'Edit request from {request.access_route[0]}')
+    events = request.form.get('events')
 
-    if source not in targets or dest not in targets:
-        abort(400, description='invalid "from" or "to" argument')
-
+    # check if event list is valid
     try:
-        events = sync(source, dest)
+        for e in events:
+            Event.from_json(e)
+
     except Exception as e:
         logging.exception(e)
-        abort(500)
+        abort(400)
 
-    if isinstance(events, dict):
-        with open(os.path.join(os.path.dirname(__file__), EVENTS_CACHE_FILE),
-                  'wb') as f:
-            pickle.dump(events, f)
-            logging.info(f'Events cache written to {EVENTS_CACHE_FILE}')
+    with open(config.get('COMMON', 'web_cache_file'), 'w') as web_cache_file:
+        json.dump(events, web_cache_file)
+        logging.info(f'Events cache written to {web_cache_file}')
 
     return {}, 201
 
@@ -79,40 +72,27 @@ def events():
 
     logging.info(f'Events update request from {request.access_route[0]}')
 
-    events_cache_path_file = os.path.join(
-        os.path.dirname(__file__),
-        EVENTS_CACHE_FILE)
-    
-    if not os.path.isfile(events_cache_path_file):
+    try:
+        with open(config.get('COMMON', 'web_cache_file'), 'r') as web_cache_file:
+            return json.load(web_cache_file)
+        
+    except FileNotFoundError:
         abort(500, description='Events have not been cached yet.')
 
-    with open(events_cache_path_file, 'rb') as f:
-        events_cache = pickle.load(f)
-        return [e.to_json() for e in events_cache.values()]
+def start_sync_job():
+    """start a scheduler with the calendar syncronisation job defined in the SYNC_JOB config section"""
 
-def start_sync_jobs():
-    """start a scheduler with the syncronisation jobs defined in the SYNC_JOBS config section"""
-
+    interval = config.get('SYNC_JOB', 'interval')
+    if interval is None:
+        return
+    
     scheduler = BackgroundScheduler(timzone=config.get('COMMON', 'timezone'))
-    jobs = [config.getlist('SYNC_JOBS', o) for o in config['SYNC_JOBS'].keys()]
-    port = config.get('COMMON', 'port')
-
-    for source, target, interval in jobs:
-        task = lambda source, target: requests.post(
-            f"http://localhost:{port}/sync",
-            data={
-                'from': source,
-                'to': target
-            })
-        scheduler.add_job(task,
-                          'interval',
-                          kwargs={
-                              'source': source,
-                              'target': target
-                          },
-                          minutes=interval,
-                          start_date=arrow.get().shift(seconds=10).datetime)
-        logging.info(f"added sync job: {source} -> {target} ({interval}min)")
+    scheduler.add_job(
+        sync,
+        'interval',
+        kwargs={'source': 'schedule'},
+        minutes=interval,
+        start_date=arrow.get().shift(seconds=10).datetime)
 
     scheduler.start()
 
@@ -120,5 +100,5 @@ def start_sync_jobs():
 def app_startup():
     """app factory method launch function"""
 
-    start_sync_jobs()
+    start_sync_job()
     return app
