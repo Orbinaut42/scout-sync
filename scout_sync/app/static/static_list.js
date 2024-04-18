@@ -23,7 +23,7 @@ function loadTableContents() {
                         'de-DE',
                         {'weekday': 'short', 'day': '2-digit', 'month': '2-digit', 'year': '2-digit'})
                     )
-                addTableData(tr, date.getHours() || date.setMinutes()
+                addTableData(tr, date.getHours() || date.getMinutes()
                     ? date.toLocaleTimeString(
                         'de-DE',
                         {'timeStyle': 'short'}

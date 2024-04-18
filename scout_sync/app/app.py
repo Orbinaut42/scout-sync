@@ -63,7 +63,15 @@ def list():
     Returns a HTML document with the empty table"""
 
     logging.info(f'List request from {request.access_route[0]}')
-    return app.send_static_file('game_list.html')
+    return app.send_static_file('static_list.html')
+
+@app.route('/edit_list')
+def edit_list():
+    """GET access point for the editable list
+    Returns a HTML document with the empty table"""
+
+    logging.info(f'Editable list request from {request.access_route[0]}')
+    return app.send_static_file('editable_list.html')
 
 @app.route('/list/events')
 def events():
