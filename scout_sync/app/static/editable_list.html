@@ -11,16 +11,16 @@
     <table>
       <thead>
         <tr>
-          <th id="dateTh">Datum</th>
-          <th id="timeTh">Zeit</th>
-          <th id="locationTh">Halle</th>
-          <th id="leagueTh">Liga</th>
-          <th id="opponentTh">Gegner</th>
-          <th id="scouterTh">Scouter</th>
+          <th>Datum</th>
+          <th>Zeit</th>
+          <th>Halle</th>
+          <th>Liga</th>
+          <th>Gegner</th>
+          <th>Scouter</th>
         </tr>
       </thead>
       <tbody id="eventTable">
-        <tr id="templateRow" hidden="true">
+        <tr class="templateRow" hidden="true">
           <td class="dateTd"><input type="date"></td>
           <td class="timeTd"><input type="time"></td>
           <td class="locationTd"></td>
@@ -33,5 +33,26 @@
     </table>   
     <button id="addRow">Neues Spiel</button>
     <button id="submitEvents">Übernehmen</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>BBL, Eurocup</th>
+          <th>ProB</th>
+          <th>Rest</th>
+          <th>Gesamt</th>
+        </tr>
+      </thead>
+      <tbody id="statsTable">
+        <tr class="templateRow" hidden="true">
+          <td class="nameTd"></td>
+          <td class="cat1Td">0</td>
+          <td class="cat2Td">0</td>
+          <td class="cat3Td">0</td>
+          <td class="sumTd">0</td>
+        </tr>
+      </tbody>
+    </table>
   </body>
 </html>

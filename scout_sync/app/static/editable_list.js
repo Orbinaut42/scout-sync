@@ -1,4 +1,5 @@
 EVENTS = []
+NAMES = []
 
 function addTableRow(event) {
     if (event == null) {
@@ -31,7 +32,7 @@ function addTableRow(event) {
         var editable = event.schedule_info == null
     }
 
-    const $newRow = $('#templateRow').clone().removeAttr('id')
+    const $newRow = $('#eventTable').children('.templateRow').clone().removeAttr('class')
     $newRow.data('gameId', gameId)
     $newRow.children('.dateTd').children('input')
         .attr('value', dateString)
@@ -61,7 +62,7 @@ function addTableRow(event) {
 }
 
 function getTableData() {
-    return $('#eventTable').children('tr').not('#templateRow').map((i, row) => {return {
+    return $('#eventTable').children('tr').not('.templateRow').map((i, row) => {return {
         id: $(row).data('gameId'),
         datetime: Date.parse(`${$(row).children('.dateTd').children('input').val()} ${$(row).children('.timeTd').children('input').val()}`) || 0,
         location: $(row).children('.locationTd').text(),
@@ -77,20 +78,59 @@ function submitEvents() {
     $.post('/edit', JSON.stringify(tableData), dataType='json')
 }
 
+function updateStatsTable() {
+    const categories = {
+        c1: /(?<![RNJ])BBL|Euro/,
+        c2: /ProB/,
+        c3: null
+    }
+    
+    const statsTable = Object.fromEntries(NAMES.map(n => [
+        n, Object.fromEntries(Object.keys(categories).map(c => [c, 0]))
+    ]))
+
+    for (const game of getTableData()) {
+        for (const c in categories) {
+            if (!categories[c] || game.league.match(categories[c])) {
+                game.scouters.forEach(s => statsTable[s][c] += 1)
+                break
+            }
+        }
+    }
+
+    $('#statsTable').children('tr').not('.templateRow').each((i, tr) => {
+        const $tr = $(tr)
+        const stats = statsTable[$tr.children('.nameTd').text()]
+        $tr.children('.cat1Td').text(stats.c1)
+        $tr.children('.cat2Td').text(stats.c2)
+        $tr.children('.cat3Td').text(stats.c3)
+        $tr.children('.sumTd').text(stats.c1 + stats.c2 +stats.c3)
+    })
+}
+
 $(document).ready(() => {
     $.getJSON('/list/events', (response, status) => {  
         if (status != 'success') {
             throw new Error(status)
         }
         
-        $('#templateRow').children('.scouterTd').children('select').append(
-            $.map(['', ...response.names], n => $('<option/>', {'value': n}).text(n))
+        EVENTS = response.events
+        NAMES = response.names
+        
+        $('#eventTable').find('select').append(
+            $.map(['', ...NAMES], n => $('<option/>', {'value': n}).text(n))
         )
 
-        EVENTS = response.events
         EVENTS.forEach(addTableRow)
+        NAMES.forEach(n => {
+            const $newRow = $('#statsTable').children('.templateRow').clone().removeAttr('class')
+            $newRow.children('.nameTd').text(n)
+            $newRow.appendTo($("#statsTable")).prop('hidden', false)
+        })
     })
 
+    new MutationObserver(updateStatsTable).observe($('#eventTable')[0], {childList: true})
+    $('#eventTable').on('input', updateStatsTable)
     $('#addRow').on('click', () => addTableRow(null))
     $('#submitEvents').on('click', submitEvents)
 })
