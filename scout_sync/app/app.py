@@ -39,7 +39,7 @@ def edit():
     {events: [json_events]}"""
 
     logging.info(f'Edit request from {request.access_route[0]}')
-    events = request.form.get('events')
+    events = request.get_json(force=True)
 
     # check if event list is valid
     try:
@@ -54,6 +54,11 @@ def edit():
         json.dump(events, web_cache_file)
         logging.info(f'Events cache written to {web_cache_file}')
 
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(sync, kwargs={'source': 'cache'})
+    scheduler.start()
+
+    
     return {}, 201
 
 

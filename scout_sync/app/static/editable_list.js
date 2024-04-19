@@ -1,5 +1,8 @@
+EVENTS = []
+
 function addTableRow(event) {
     if (event == null) {
+        var gameId = Date.now().toString()
         var dateString = ''
         var timeString = ''
         var location = ''
@@ -15,6 +18,7 @@ function addTableRow(event) {
         const hour = date.getHours().toString().padStart(2, "0")
         const minute = date.getMinutes().toString().padStart(2, "0")
 
+        var gameId = event.id
         var dateString = `${year}-${month}-${day}`
         var timeString = date.getHours() || date.getMinutes()
             ? `${hour}:${minute}`
@@ -28,6 +32,7 @@ function addTableRow(event) {
     }
 
     const $newRow = $('#templateRow').clone().removeAttr('id')
+    $newRow.data('gameId', gameId)
     $newRow.children('.dateTd').children('input')
         .attr('value', dateString)
         .prop('disabled', !editable)
@@ -55,6 +60,23 @@ function addTableRow(event) {
     $newRow.appendTo($("#eventTable")).prop('hidden', false)
 }
 
+function getTableData() {
+    return $('#eventTable').children('tr').not('#templateRow').map((i, row) => {return {
+        id: $(row).data('gameId'),
+        datetime: Date.parse(`${$(row).children('.dateTd').children('input').val()} ${$(row).children('.timeTd').children('input').val()}`) || 0,
+        location: $(row).children('.locationTd').text(),
+        league: $(row).children('.leagueTd').text(),
+        opponent: $(row).children('.opponentTd').text(),
+        scouters: $(row).children('.scouterTd').children('select').map((i, s) => $(s).val()).get().filter(s => s !== '')
+    }}).get()
+}
+
+function submitEvents() {
+    const tableData = getTableData()
+    tableData.forEach(d => d.schedule_info = EVENTS.find(e => e.id === d.id)?.schedule_info || null)
+    $.post('/edit', JSON.stringify(tableData), dataType='json')
+}
+
 $(document).ready(() => {
     $.getJSON('/list/events', (response, status) => {  
         if (status != 'success') {
@@ -65,8 +87,10 @@ $(document).ready(() => {
             $.map(['', ...response.names], n => $('<option/>', {'value': n}).text(n))
         )
 
-        response.events.forEach(addTableRow)
+        EVENTS = response.events
+        EVENTS.forEach(addTableRow)
     })
 
     $('#addRow').on('click', () => addTableRow(null))
+    $('#submitEvents').on('click', submitEvents)
 })
