@@ -1,10 +1,3 @@
-SCOUTER_NAMES = [
-    '',
-    'Andreas',
-    'Ralf',
-    'Claus'
-]
-
 function addTableRow(event) {
     if (event == null) {
         var dateString = ''
@@ -63,16 +56,16 @@ function addTableRow(event) {
 }
 
 $(document).ready(() => {
-    $('#templateRow').children('.scouterTd').children('select').append(
-        $.map(SCOUTER_NAMES, n => $('<option/>', {'value': n}).text(n))
-    )
-
-    $.getJSON('/list/events', (events, status) => {
+    $.getJSON('/list/events', (response, status) => {  
         if (status != 'success') {
             throw new Error(status)
         }
+        
+        $('#templateRow').children('.scouterTd').children('select').append(
+            $.map(['', ...response.names], n => $('<option/>', {'value': n}).text(n))
+        )
 
-        events.forEach(addTableRow)
+        response.events.forEach(addTableRow)
     })
 
     $('#addRow').on('click', () => addTableRow(null))

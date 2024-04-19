@@ -58,7 +58,7 @@ def edit():
 
 
 @app.route('/list')
-def list():
+def _list():
     """GET access point for the current game list
     Returns a HTML document with the empty table"""
 
@@ -82,7 +82,9 @@ def events():
 
     try:
         with open(config.get('COMMON', 'web_cache_file'), 'r') as web_cache_file:
-            return json.load(web_cache_file)
+            return {
+                'events': json.load(web_cache_file),
+                'names': list(config['EMAILS'].keys())}
         
     except FileNotFoundError:
         abort(500, description='Events have not been cached yet.')
