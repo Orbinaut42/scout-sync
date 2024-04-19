@@ -11,16 +11,26 @@
     <table>
       <thead>
         <tr>
-          <th id="date">Datum</th>
-          <th id="time">Zeit</th>
-          <th id="location">Halle</th>
-          <th id="league">Liga</th>
-          <th id="opponent">Gegner</th>
-          <th id="scouter" colspan="3">Scouter</th>
+          <th id="dateTh">Datum</th>
+          <th id="timeTh">Zeit</th>
+          <th id="locationTh">Halle</th>
+          <th id="leagueTh">Liga</th>
+          <th id="opponentTh">Gegner</th>
+          <th id="scouterTh">Scouter</th>
         </tr>
       </thead>
-      <tbody id="eventTable"></tbody>
+      <tbody id="eventTable">
+        <tr id="templateRow" hidden="true">
+          <td class="dateTd"><input type="date" value=""></td>
+          <td class="timeTd"><input type="time" value=""></td>
+          <td class="locationTd"></td>
+          <td class="leagueTd"></td>
+          <td class="opponentTd"></td>
+          <td class="scouterTd"><select></select></td>
+          <td><button class="deleteButton">Spiel löschen</button></td>
+        </tr>
+      </tbody>
     </table>   
+    <button id="addRow">Neues Spiel</button>
   </body>
-  <button id="addRow">Neues Spiel</button>
 </html>

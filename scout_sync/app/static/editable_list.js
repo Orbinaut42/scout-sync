@@ -34,38 +34,44 @@ function addTableRow(event) {
         var editable = event.schedule_info == null
     }
 
-    $('<tr/>').append([
-        $('<td/>').append($('<input/>', {
-            'type': 'date',
-            'value': dateString,
-            'disabled': !editable
-        })),
-        $('<td/>').append($('<input/>', {
-            'type': 'time',
-            'value':  timeString,
-            'disabled': !editable
-        })),
-        $('<td/>', { 'contenteditable': editable }).text(location || ''),
-        $('<td/>', { 'contenteditable': editable }).text(league || ''),
-        $('<td/>', { 'contenteditable': editable }).text(opponent || ''),
-        $('<td/>').append($.map(scouters, name =>
-            $('<select/>').append($.map(SCOUTER_NAMES, n =>
-                $('<option/>', {'selected': n === name}).text(n))
-            )
-        )),
-        $('<button/>',  { 'disabled': !editable })
-            .text("Spiel löschen")
-            .on('click', function () {$(this).parent().remove()})
-    ]).appendTo($("#eventTable"))
+    const $newRow = $('#templateRow').clone().removeAttr('id')
+    $newRow.children('.dateTd').children('input')
+        .attr('value', dateString)
+        .prop('disabled', !editable)
+    $newRow.children('.timeTd').children('input')
+        .attr('value', timeString)
+        .prop('disabled', !editable)
+    $newRow.children('.locationTd')
+        .text(location || '')
+        .prop('contenteditable', editable)
+    $newRow.children('.leagueTd')
+        .text(league || '')
+        .prop('contenteditable', editable)
+    $newRow.children('.opponentTd')
+        .text(opponent || '')
+        .prop('contenteditable', editable)
+    const $scouterSelectTemplate = $newRow.children('.scouterTd').children('select').detach()
+    $newRow.children('.scouterTd').append($.map(scouters, s => {
+        const $newSelect = $scouterSelectTemplate.clone()
+        $newSelect.children(`option[value='${s}']`).prop('selected', true)
+        return $newSelect
+    }))
+    $newRow.find('.deleteButton')
+        .on('click', function () {$(this).parents('tr').remove()})
+        .prop('disabled', !editable)
+    $newRow.appendTo($("#eventTable")).prop('hidden', false)
 }
 
 $(document).ready(() => {
+    $('#templateRow').children('.scouterTd').children('select').append(
+        $.map(SCOUTER_NAMES, n => $('<option/>', {'value': n}).text(n))
+    )
+
     $.getJSON('/list/events', (events, status) => {
         if (status != 'success') {
             throw new Error(status)
         }
 
-        $("#eventTable").html('')
         events.forEach(addTableRow)
     })
 
