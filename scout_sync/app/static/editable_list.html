@@ -19,24 +19,34 @@
           <th>Scouter</th>
         </tr>
       </thead>
-      <tbody id="eventTable">
+      <tbody id="viewEventTable" class="viewOnly">
         <tr class="templateRow" hidden="true">
-          <td class="dateTd"><input type="date"></td>
-          <td class="timeTd"><input type="time"></td>
-          <td class="locationTd"></td>
-          <td class="leagueTd"></td>
-          <td class="opponentTd"></td>
-          <td class="scouterTd"><select></select></td>
+          <td class="viewDateTd"></td>
+          <td class="viewTimeTd"></td>
+          <td class="viewLocationTd"></td>
+          <td class="viewLeagueTd"></td>
+          <td class="viewOpponentTd"></td>
+          <td class="viewScouterTd"></td>
+        </tr>
+      </tbody>
+      <tbody id="editEventTable" class="editOnly">
+        <tr class="templateRow" hidden="true">
+          <td class="editDateTd"><input type="date"></td>
+          <td class="editTimeTd"><input type="time"></td>
+          <td class="editLocationTd"></td>
+          <td class="editLeagueTd"></td>
+          <td class="editOpponentTd"></td>
+          <td class="editScouterTd"><select></select></td>
           <td><button class="deleteButton">Spiel löschen</button></td>
         </tr>
       </tbody>
     </table>   
-    <button id="addRow">Neues Spiel</button>
-    <input id="pwInput" type="password"></input>
-    <div id="submitResponse"></div>
-    <button id="submitEvents">Übernehmen</button>
+    <button id="addRow" class="editOnly">Neues Spiel</button>
+    <input id="pwInput" class="editOnly" type="password"></input>
+    <div id="submitResponse" class="editOnly"></div>
+    <button id="submitEvents" class="editOnly">Übernehmen</button>
 
-    <table>
+    <table class="editOnly">
       <thead>
         <tr>
           <th></th>
@@ -58,3 +68,6 @@
     </table>
   </body>
 </html>
+
+<input type="checkbox" id="editToggle">
+<label for="editToggle">Bearbeiten</label>

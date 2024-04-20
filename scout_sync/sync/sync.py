@@ -153,16 +153,13 @@ class Event:
 
         if self.scouters is not None:
             event['attendees'] = []
-            for scouter in self.scouters:
-                try:
+            for scouter_name in self.scouters:
+                email = self.__emails.get(scouter_name)
+                if email not in [None, '']:
                     event['attendees'].append({
-                        "email": self.__emails[scouter],
-                        "displayName": scouter
+                        "email": email,
+                        "displayName": scouter_name
                     })
-
-                except KeyError:
-                    logging.warning(
-                        f"Unknown scouter name in event at {self.datetime}: {scouter}")
 
         event['reminders'] = {
             'useDefault': False,

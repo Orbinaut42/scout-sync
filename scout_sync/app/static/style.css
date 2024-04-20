@@ -1,55 +1,71 @@
     body {
-    font-family: Tahoma, sans-serif;
+        font-family: Tahoma, sans-serif;
     }
+
     table {
-    table-layout: fixed;
-    border-spacing:  0px;
-    width: 100%;
-    font-size: 1.4vw;
-    } 
+        table-layout: fixed;
+        border-spacing: 0px;
+        width: 100%;
+        font-size: 1.4vw;
+    }
+
     thead {
-    position: sticky;
-    top: 0;
-    background: white;
+        position: sticky;
+        top: 0;
+        background: white;
     }
+
     th, td {
-    padding-top: .15em;
-    padding-bottom: .15em;
-    padding-left: .25em;
-    padding-right: .25em;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
+        padding-top: .15em;
+        padding-bottom: .15em;
+        padding-left: .25em;
+        padding-right: .25em;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
     }
+
+    .editLocationTd[contenteditable=false], .editLeagueTd[contenteditable=false], .editOpponentTd[contenteditable=false]{
+        color: #606060;
+    }
+
     #date {
-    width: 9%
+        width: 9%
     }
+
     #time {
-    width: 5%
+        width: 5%
     }
+
     #location {
-    width: 17%
+        width: 17%
     }
+
     #league {
-    width: 10%
+        width: 10%
     }
+
     #scouter {
-    width: 25%
+        width: 25%
     }
+
     th {
-    text-align: left;
-    border-bottom: solid;
-    border-top: solid;
+        text-align: left;
+        border-bottom: solid;
+        border-top: solid;
     }
+
     tr:nth-child(even) {
-    background-color: #f0f0f0;
+        background-color: #f0f0f0;
     }
+
     .past {
-    color: #606060;
+        color: #606060;
     }
+
     @media only screen and (min-width: 768px) {
-    table {
-        width: initial;
-        font-size: initial;
-    }
+        table {
+            width: initial;
+            font-size: initial;
+        }
     }
