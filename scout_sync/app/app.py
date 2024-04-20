@@ -4,6 +4,7 @@ import logging
 import json
 import arrow
 from flask import Flask, request, abort
+from markupsafe import escape
 from apscheduler.schedulers.background import BackgroundScheduler
 from ..config import config
 from ..sync import sync, Event
@@ -19,10 +20,24 @@ logging.getLogger('apscheduler').setLevel(logging.ERROR)
 sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.exception(
     exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
 
+scheduler = BackgroundScheduler(timzone=config.get('COMMON', 'timezone'))
+scheduler.start()
+
+def escape_json(j):
+    if isinstance(j, str):
+        j = str(escape(j))
+    elif isinstance(j, list):
+        for i in range(len(j)):
+            j[i] = escape_json(j[i])
+    elif isinstance(j, dict):
+        for key in j:
+            j[key] = escape_json(j[key])
+    
+    return j
+
 app = Flask(
     'scout_sync',
     static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-
 
 @app.route('/')
 def root():
@@ -39,12 +54,22 @@ def edit():
     {events: [json_events]}"""
 
     logging.info(f'Edit request from {request.access_route[0]}')
-    events = request.get_json(force=True)
+    try:
+        request_data = escape_json(request.json)
+    except Exception as e:
+        logging.exception(e)
+        abort(400)
+
+    pw = config.get('COMMON', 'submit_pw')
+    if (pw == '' or pw != request_data.get('password')):
+        abort(401)
+
+    events = request_data.get('events')
 
     # check if event list is valid
     try:
-        for e in events:
-            Event.from_json(e)
+        for event in events:
+            Event.from_json(event)
 
     except Exception as e:
         logging.exception(e)
@@ -54,11 +79,8 @@ def edit():
         json.dump(events, web_cache_file)
         logging.info(f'Events cache written to {web_cache_file}')
 
-    scheduler = BackgroundScheduler()
     scheduler.add_job(sync, kwargs={'source': 'cache'})
-    scheduler.start()
 
-    
     return {}, 201
 
 
@@ -101,8 +123,7 @@ def start_sync_job():
         return
     
     interval = config.getint('SYNC_JOB', 'interval')
-    
-    scheduler = BackgroundScheduler(timzone=config.get('COMMON', 'timezone'))
+
     scheduler.add_job(
         sync,
         'interval',

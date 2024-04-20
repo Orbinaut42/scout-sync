@@ -75,7 +75,23 @@ function getTableData() {
 function submitEvents() {
     const tableData = getTableData()
     tableData.forEach(d => d.schedule_info = EVENTS.find(e => e.id === d.id)?.schedule_info || null)
-    $.post('/edit', JSON.stringify(tableData), dataType='json')
+    $.ajax(
+        '/edit',
+        {
+            method: 'POST',
+            data: JSON.stringify({ password: $('#pwInput').val(), events: tableData }),
+            contentType: 'application/json'
+        }
+    )
+    .done(() => {
+            $('#submitResponse').text('Ok')
+        }
+    )
+    .fail((data) => {
+            if (data.status == 401) $('#submitResponse').text('Passwort falsch')
+            else $('#submitResponse').text(`${data.status}: ${data.statusText}`)
+        }
+    )
 }
 
 function updateStatsTable() {

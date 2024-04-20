@@ -11,6 +11,9 @@ schedule_request_timeout = 20
 # events cache file name
 web_cache_file = events.json
 
+# Password for submitting from the webpage
+submit_pw =
+
 simulate = False
 
 [GOOGLE_API]

@@ -15,6 +15,9 @@ for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
     if not config.has_option('EMAILS', name):
         config['EMAILS'][name] = email
 
+if not config.get('COMMON', 'submit_pw', fallback=None):
+    config['COMMON']['submit_pw'] = os.getenv('SUBMIT_PW', default='')
+
 if not config.get('GOOGLE_API', 'oauth_info', fallback=None):
     config['GOOGLE_API']['oauth_info'] = os.getenv('OAUTH_INFO', default='')
 
