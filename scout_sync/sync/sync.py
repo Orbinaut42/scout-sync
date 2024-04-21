@@ -114,12 +114,12 @@ class Event:
         """create an event from a json object"""
         e = cls(
             id = event['id'],
-            datetime = arrow.get(event['datetime'], tzinfo=TIMEZONE),
-            location = event['location'],
-            league = event['league'],
-            opponent = event['opponent'],
-            scouters = event['scouters'],
-            schedule_info = event['schedule_info'])
+            datetime = arrow.get(event.get('datetime', 0), tzinfo=TIMEZONE),
+            location = event.get('location') or None,
+            league = event.get('league') or None,
+            opponent = event.get('opponent') or None,
+            scouters = event.get('scouters') or [],
+            schedule_info = event.get('schedule_info'))
             
         return e
 
