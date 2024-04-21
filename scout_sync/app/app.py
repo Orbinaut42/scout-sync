@@ -131,9 +131,6 @@ def start_sync_job():
         minutes=interval,
         start_date=arrow.get().shift(seconds=10).datetime)
 
-    scheduler.start()
-
-
 def app_startup():
     """app factory method launch function"""
 

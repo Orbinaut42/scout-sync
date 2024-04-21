@@ -6,7 +6,7 @@
         table-layout: fixed;
         border-spacing: 0px;
         width: 100%;
-        font-size: 1.4vw;
+        font-size: 2vw;
     }
 
     thead {
@@ -23,49 +23,191 @@
         white-space: nowrap;
         text-overflow: ellipsis;
         overflow: hidden;
+        vertical-align: top;
     }
 
     .editLocationTd[contenteditable=false], .editLeagueTd[contenteditable=false], .editOpponentTd[contenteditable=false]{
         color: #606060;
     }
 
-    #date {
-        width: 9%
+    #dateTimeColumn {
+        width: 15%
     }
 
-    #time {
-        width: 5%
+    #locationColumn {
+        width: 23%
     }
 
-    #location {
-        width: 17%
-    }
-
-    #league {
+    #leagueColumn {
         width: 10%
     }
 
-    #scouter {
-        width: 25%
+    #scouterColumn {
+        width: 15%
+    }
+
+    #deleteButtonColumn {
+        width: 5%
+    }
+
+    .statsTableColumn {
+        width: 15% 
     }
 
     th {
         text-align: left;
         border-bottom: solid;
         border-top: solid;
+        background-color: white;
     }
 
     tr:nth-child(even) {
         background-color: #f0f0f0;
     }
 
+    tr:nth-child(odd) {
+        background-color: #ffffff;
+    }
+
     .past {
         color: #606060;
     }
 
-    @media only screen and (min-width: 768px) {
-        table {
-            width: initial;
+    #editDiv {
+        position: sticky;
+        bottom: 0;
+        background-color: white;
+        border-top: 6px solid #f0f0f0;
+        font-size: 3vw; 
+    }
+
+    #pwInput {
+        font-size: 3vw;
+    }
+
+    #editSpacer {
+        height: 2vw;
+    }
+
+    select {
+        color: black;
+        background-image: linear-gradient(white, #ccc);
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 2vw;
+    }
+
+    button {
+        width: 50px;
+        height: 40px;
+        color: black;
+        background-image: linear-gradient(white, #ccc);
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 25px;
+        cursor: pointer;
+    }
+
+    button:disabled {
+        display: none;
+    }
+
+    .deleteButton, #addRow {
+        font-weight: bold;
+    }
+
+    #submitEvents {
+        width: 8em;
+        font-size: 3vw;
+    }
+
+    #statsTableWrapper {
+        margin-top: 2vw;
+        margin-bottom: 2vw;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 80px;
+        height: 40px;
+      }
+      
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        -webkit-transition: .4s;
+        transition: .4s;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 32px;
+        width: 32px;
+        border-radius: 4px;
+        left: 4px;
+        bottom: 4px;
+        background-color: rgb(0, 0, 0);
+        -webkit-transition: .4s;
+        transition: .4s;
+    }
+    
+    input:checked + .slider {
+        background-color: white;
+    }
+    
+    input:checked + .slider:before {
+        -webkit-transform: translateX(40px);
+        -ms-transform: translateX(40px);
+        transform: translateX(40px);
+    }
+
+    @media only screen and (min-width: 1024px) {
+        body {
             font-size: initial;
+        }
+
+        #editDiv {
+            font-size: initial;
+        }
+
+        #pwInput {
+            font-size: initial;
+        }
+
+        #submitEvents {
+            font-size: initial;
+        }
+
+        table {
+            font-size: initial;
+            width: initial;
+        }
+
+        .switch {
+            scale: 0.7
+        }
+
+        button {
+            scale: 0.7
+        }
+
+        select {
+            font-size: initial; 
         }
     }

@@ -11,18 +11,17 @@
     <table>
       <thead>
         <tr>
-          <th>Datum</th>
-          <th>Zeit</th>
-          <th>Halle</th>
-          <th>Liga</th>
-          <th>Gegner</th>
-          <th>Scouter</th>
+          <th id="dateTimeColumn">Datum</th>
+          <th id="locationColumn">Halle</th>
+          <th id="leagueColumn">Liga</th>
+          <th id="opponentColumn">Gegner</th>
+          <th id="scouterColumn">Scouter</th>
+          <th id="deleteButtonColumn" class="editOnly"></th>
         </tr>
       </thead>
       <tbody id="viewEventTable" class="viewOnly">
         <tr class="templateRow" hidden="true">
-          <td class="viewDateTd"></td>
-          <td class="viewTimeTd"></td>
+          <td class="viewDateTimeTd"></td>
           <td class="viewLocationTd"></td>
           <td class="viewLeagueTd"></td>
           <td class="viewOpponentTd"></td>
@@ -31,43 +30,59 @@
       </tbody>
       <tbody id="editEventTable" class="editOnly">
         <tr class="templateRow" hidden="true">
-          <td class="editDateTd"><input type="date"></td>
-          <td class="editTimeTd"><input type="time"></td>
+          <td class="editDateTimeTd"><input type="date"><br><input type="time"></td>
           <td class="editLocationTd"></td>
           <td class="editLeagueTd"></td>
           <td class="editOpponentTd"></td>
           <td class="editScouterTd"><select></select></td>
-          <td><button class="deleteButton">Spiel löschen</button></td>
+          <td><button class="deleteButton">x</button></td>
         </tr>
       </tbody>
-    </table>   
-    <button id="addRow" class="editOnly">Neues Spiel</button>
-    <input id="pwInput" class="editOnly" type="password"></input>
-    <div id="submitResponse" class="editOnly"></div>
-    <button id="submitEvents" class="editOnly">Übernehmen</button>
+    </table>  
+    
+    <div id="editDiv">
+      <button id="addRow" class="editOnly">+</button>
+      <div id="editSpacer"></div>
 
-    <table class="editOnly">
-      <thead>
-        <tr>
-          <th></th>
-          <th>BBL, Eurocup</th>
-          <th>ProB</th>
-          <th>Rest</th>
-          <th>Gesamt</th>
-        </tr>
-      </thead>
-      <tbody id="statsTable">
-        <tr class="templateRow" hidden="true">
-          <td class="nameTd"></td>
-          <td class="cat1Td">0</td>
-          <td class="cat2Td">0</td>
-          <td class="cat3Td">0</td>
-          <td class="sumTd">0</td>
-        </tr>
-      </tbody>
-    </table>
+      <div>
+        <input id="pwInput" class="editOnly" type="password" placeholder="Passwort">
+        <button id="submitEvents" class="editOnly">Übernehmen</button>
+        <span id="submitResponse" class="editOnly"></span>      
+      </div>
+
+      <div id="statsTableWrapper" class="editOnly">
+        <table id="statsTable">
+          <thead>
+            <tr>
+              <th class="statsTableColumn"></th>
+              <th class="statsTableColumn">BBL, Eurocup</th>
+              <th class="statsTableColumn">ProB</th>
+              <th class="statsTableColumn">Rest</th>
+              <th class="statsTableColumn">Gesamt</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="templateRow" hidden="true">
+              <td class="nameTd"></td>
+              <td class="cat1Td">0</td>
+              <td class="cat2Td">0</td>
+              <td class="cat3Td">0</td>
+              <td class="sumTd">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <label class="switch">
+        <input type="checkbox" id="editToggle">
+        <span class="slider"></span>
+      </label>
+      <label for="editToggle">Bearbeiten</label>
+      <label class="switch editOnly">
+        <input type="checkbox" id="statsToggle">
+        <span class="slider"></span>
+      </label>
+      <label for="statsToggle" class="editOnly">Einsätze</label>
+    </div>
   </body>
 </html>
-
-<input type="checkbox" id="editToggle">
-<label for="editToggle">Bearbeiten</label>

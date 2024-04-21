@@ -17,14 +17,15 @@ function addViewTableRow(event) {
     const league = event.league
     const opponent = event.opponent
     const scouters = Array.from(event.scouters)
+    while (scouters.length < 4) scouters.push('')
 
     const $newViewRow = $('#viewEventTable').children('.templateRow').clone().removeAttr('class')
-    $newViewRow.children('.viewDateTd').text(dateString)
-    $newViewRow.children('.viewTimeTd').text(timeString)
+    $newViewRow.addClass(date < Date.now() ? 'past' : 'upcoming')
+    $newViewRow.children('.viewDateTimeTd').html(`${dateString}<br>${timeString}`)
     $newViewRow.children('.viewLocationTd').text(location || '')
     $newViewRow.children('.viewLeagueTd').text(league || '')
     $newViewRow.children('.viewOpponentTd').text(opponent || '')
-    $newViewRow.children('.viewScouterTd').text(scouters.join(' '))
+    $newViewRow.children('.viewScouterTd').html(scouters.join('<br>'))
     $newViewRow.appendTo($("#viewEventTable")).prop('hidden', false)
 }
 
@@ -61,10 +62,10 @@ function addEditTableRow(event) {
     
     const $newEditRow = $('#editEventTable').children('.templateRow').clone().removeAttr('class')
     $newEditRow.data('gameId', gameId)
-    $newEditRow.children('.editDateTd').children('input')
+    $newEditRow.children('.editDateTimeTd').children('input[type="date"]')
         .attr('value', dateString)
         .prop('disabled', !editable)
-    $newEditRow.children('.editTimeTd').children('input')
+    $newEditRow.children('.editDateTimeTd').children('input[type="time"]')
         .attr('value', timeString)
         .prop('disabled', !editable)
     $newEditRow.children('.editLocationTd')
@@ -80,7 +81,7 @@ function addEditTableRow(event) {
     $newEditRow.children('.editScouterTd').append($.map(scouters, s => {
         const $newSelect = $scouterSelectTemplate.clone()
         $newSelect.children(`option[value='${s}']`).prop('selected', true)
-        return $newSelect
+        return [$newSelect, $('<br>')]
     }))
     $newEditRow.find('.deleteButton')
         .prop('disabled', !editable)
@@ -89,16 +90,13 @@ function addEditTableRow(event) {
 }
 
 function reload () {
-    if ($('#editToggle').is(':checked')) return
-
-    console.log('reloda')
     $.getJSON('/list/events', (response, status) => {  
         if (status != 'success') {
             throw new Error(status)
         }
         
-        EVENTS = response.events
-        NAMES = response.names
+        EVENTS = response.events.sort((e1, e2) => new Date(e1.datetime) - new Date(e2.datetime))
+        NAMES = response.names.sort()
         
         $('#editEventTable').find('select').html('').append(
             $.map(['', ...NAMES], n => $('<option/>', {'value': n}).text(n))
@@ -106,23 +104,27 @@ function reload () {
 
         $('#viewEventTable').children('tr').not('.templateRow').remove()
         $('#editEventTable').children('tr').not('.templateRow').remove()
-        $('#statsTable').children('tr').not('.templateRow').remove()
+        $('#statsTable').children('tbody').children('tr').not('.templateRow').remove()
+        $('#pwInput').val('')
+        $('#submitResponse').text('')
 
         EVENTS.forEach(addViewTableRow)
+        $('tr.upcoming').get()[0].scrollIntoView(alignToTop=true)
         NAMES.forEach(n => {
-            const $newRow = $('#statsTable').children('.templateRow').clone().removeAttr('class')
+            const $newRow = $('#statsTable').children('tbody').children('.templateRow').clone().removeAttr('class')
             $newRow.children('.nameTd').text(n)
-            $newRow.appendTo($("#statsTable")).prop('hidden', false)
+            $newRow.appendTo($("#statsTable").children("tbody")).prop('hidden', false)
         })
     })
 
+    $('#editToggle').prop('checked', false)
     setEditState()
 }
 
 function getEditTableData () {
     return $('#editEventTable').children('tr').not('.templateRow').map((i, row) => {return {
         id: $(row).data('gameId'),
-        datetime: Date.parse(`${$(row).children('.dateTd').children('input').val()} ${$(row).children('.timeTd').children('input').val()}`) || 0,
+        datetime: Date.parse($(row).children('.editDateTimeTd').children('input').map((i, input) => input.value).get().join(' ')),
         location: $(row).children('.editLocationTd').text(),
         league: $(row).children('.editLeagueTd').text(),
         opponent: $(row).children('.editOpponentTd').text(),
@@ -143,11 +145,14 @@ function submitEvents() {
     )
     .done(() => {
             $('#submitResponse').text('Ok')
+            $('#pwInput').val('')
+            reload()
         }
     )
     .fail((data) => {
             if (data.status == 401) $('#submitResponse').text('Passwort falsch')
             else $('#submitResponse').text(`${data.status}: ${data.statusText}`)
+            $('#pwInput').val('')
         }
     )
 }
@@ -172,7 +177,7 @@ function updateStatsTable() {
         }
     }
 
-    $('#statsTable').children('tr').not('.templateRow').each((i, tr) => {
+    $('#statsTable').children('tbody').children('tr').not('.templateRow').each((i, tr) => {
         const $tr = $(tr)
         const stats = statsTable[$tr.children('.nameTd').text()]
         $tr.children('.cat1Td').text(stats.c1)
@@ -184,11 +189,19 @@ function updateStatsTable() {
 
 function setEditState() {
     if ($('#editToggle').is(':checked')) {
-        $(".viewOnly").hide()
-        $(".editOnly").show()
+        $(".viewOnly").fadeOut()
+        $(".editOnly").fadeIn()
     } else {
-        $(".viewOnly").show()
-        $(".editOnly").hide()
+        $(".viewOnly").fadeIn()
+        $(".editOnly").fadeOut()
+    }
+}
+
+function setStatsState () {
+    if ($('#statsToggle').is(':checked')) {
+        $("#statsTable").fadeIn()
+    } else {
+        $("#statsTable").fadeOut()
     }
 }
 
@@ -199,14 +212,24 @@ $(document).ready(() => {
         addEditTableRow(null)
     })
     $('#submitEvents').on('click', submitEvents)
-    $('#editToggle').prop('checked', false)
+    $('#pwInput').keypress(e => {
+        if (e.which == 13) {
+            submitEvents()
+            return false
+        }
+    })
     $('#editToggle').on('change', () => {
         $('#editEventTable').children('tr').not('.templateRow').remove()
         EVENTS.forEach(addEditTableRow)
+        setStatsState()
         setEditState()
     })
+    $('#statsToggle').on('change', setStatsState)
 
     reload()
 })
 
-$(document).on("focus", reload)
+$(document).on("focus", () => {
+    if (!$('#editToggle').is(':checked'))
+        reload()
+})
