@@ -45,13 +45,12 @@ def root():
 
     return ''
 
-
-@app.post('/edit')
+@app.post('/list/edit')
 def edit():
     """POST access point for edits from webpage
     
     Request data should be:
-    {events: [json_events]}"""
+    {passwort: password, events: [json_events]}"""
 
     logging.info(f'Edit request from {request.access_route[0]}')
     try:
@@ -77,7 +76,7 @@ def edit():
 
     with open(config.get('COMMON', 'web_cache_file'), 'w') as web_cache_file:
         json.dump(events, web_cache_file)
-        logging.info(f'Events cache written to {web_cache_file}')
+        logging.info(f'Events cache updated from webpage.')
 
     scheduler.add_job(sync, kwargs={'source': 'cache'})
 
@@ -90,15 +89,7 @@ def _list():
     Returns a HTML document with the empty table"""
 
     logging.info(f'List request from {request.access_route[0]}')
-    return app.send_static_file('static_list.html')
-
-@app.route('/edit_list')
-def edit_list():
-    """GET access point for the editable list
-    Returns a HTML document with the empty table"""
-
-    logging.info(f'Editable list request from {request.access_route[0]}')
-    return app.send_static_file('editable_list.html')
+    return app.send_static_file('list.html')
 
 @app.route('/list/events')
 def events():

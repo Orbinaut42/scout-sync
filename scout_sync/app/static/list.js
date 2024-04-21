@@ -136,7 +136,7 @@ function submitEvents() {
     const tableData = getEditTableData()
     tableData.forEach(d => d.schedule_info = EVENTS.find(e => e.id === d.id)?.schedule_info || null)
     $.ajax(
-        '/edit',
+        '/list/edit',
         {
             method: 'POST',
             data: JSON.stringify({ password: $('#pwInput').val(), events: tableData }),
