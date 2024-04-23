@@ -70,9 +70,6 @@ class Event:
             scouters = scouter_list,
             schedule_info = schedule_info)
 
-        if not e.league:
-            logging.warning(f"Calendar event at {e.datetime} has no league")
-
         return e
 
     @classmethod
@@ -87,7 +84,7 @@ class Event:
             location_id = event['matchInfo']['spielfeld']['id']
             location = ScheduleHandler.arenas.get(str(location_id))
             if location is None:
-                logging.warning(f"Event at {datetime}: Unknown arena ID in Schedule: {location_id}")
+                logging.info(f"Event at {datetime}: Unknown arena ID in Schedule: {location_id}")
                 location = event['matchInfo']['spielfeld']['bezeichnung']
         except:
             location = None
@@ -112,9 +109,13 @@ class Event:
     @classmethod
     def from_json(cls, event):
         """create an event from a json object"""
+        try:
+            datetime = arrow.get(event.get('datetime'), tzinfo=TIMEZONE)
+        except:
+            datetime = arrow.get(2147483648, tzinfo=TIMEZONE)
         e = cls(
             id = event['id'],
-            datetime = arrow.get(event.get('datetime', 0), tzinfo=TIMEZONE),
+            datetime = datetime,
             location = event.get('location') or None,
             league = event.get('league') or None,
             opponent = event.get('opponent') or None,
@@ -133,28 +134,26 @@ class Event:
                 'matchId': self.schedule_info.get('match_id'),
                 'leagueId': self.schedule_info.get('league_id')})
             
-        if self.datetime:
-            event['start'] = {
-                'dateTime': self.datetime.isoformat(),
-                'timeZone': TIMEZONE
-            }
-            event['end'] = {
-                'dateTime': self.datetime.shift(hours=2).isoformat(),
-                'timeZone': TIMEZONE
-            }
-
-        else:
-            logging.warning('Can not create calendar event: event has no date')
-            return None
+        event['start'] = {
+            'dateTime': self.datetime.isoformat(),
+            'timeZone': TIMEZONE
+        }
+        event['end'] = {
+            'dateTime': self.datetime.shift(hours=2).isoformat(),
+            'timeZone': TIMEZONE
+        }
 
         event['location'] = self.location
-        event['summary'] = "Scouting " + self.league
+        event['summary'] = "Scouting " + (self.league or '')
         event['description'] = self.opponent
 
         if self.scouters is not None:
             event['attendees'] = []
             for scouter_name in self.scouters:
                 email = self.__emails.get(scouter_name)
+                if email is None:
+                    logging.warning(f"Unknown scouter name in event at {self.datetime}: {scouter_name}")
+                    
                 if email not in [None, '']:
                     event['attendees'].append({
                         "email": email,
@@ -450,7 +449,7 @@ class ScheduleHandler:
 class WebCacheHandler():
     def __init__(self, chache_file_name):
         try:
-            with open(chache_file_name, 'r') as web_cache_file:
+            with open(chache_file_name, encoding='utf8') as web_cache_file:
                 self.__events = json.load(web_cache_file)
         except (FileNotFoundError, json.decoder.JSONDecodeError):
             self.__events = None
@@ -459,9 +458,12 @@ class WebCacheHandler():
         if self.__events is not None:
             return [Event.from_json(e) for e in self.__events]
 
+    def json_events(self):
+        return self.__events
+    
     def store_events(self, events):
-        with open(config.get('COMMON', 'web_cache_file'), 'w') as web_cache_file:
-            json.dump([e.as_json() for e in events], web_cache_file)
+        with open(config.get('COMMON', 'web_cache_file'), 'w', encoding='utf8') as web_cache_file:
+            json.dump([e.as_json() for e in events], web_cache_file, ensure_ascii=False)
 
 
 def sync(source):

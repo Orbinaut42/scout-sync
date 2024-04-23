@@ -87,6 +87,8 @@ function addEditTableRow(event) {
         .prop('disabled', !editable)
         .on('click', function () {$(this).parents('tr').remove()})
     $newEditRow.appendTo($("#editEventTable")).prop('hidden', false)
+
+    return $newEditRow
 }
 
 function reload () {
@@ -110,6 +112,7 @@ function reload () {
 
         EVENTS.forEach(addViewTableRow)
         $('tr.upcoming').get()[0].scrollIntoView(alignToTop=true)
+
         NAMES.forEach(n => {
             const $newRow = $('#statsTable').children('tbody').children('.templateRow').clone().removeAttr('class')
             $newRow.children('.nameTd').text(n)
@@ -119,6 +122,7 @@ function reload () {
 
     $('#editToggle').prop('checked', false)
     setEditState()
+    setStatsState()
 }
 
 function getEditTableData () {
@@ -209,7 +213,7 @@ $(document).ready(() => {
     new MutationObserver(updateStatsTable).observe($('#editEventTable')[0], {childList: true})
     $('#editEventTable').on('input', updateStatsTable)
     $('#addRow').on('click', () => {
-        addEditTableRow(null)
+        addEditTableRow(null).get()[0].scrollIntoView(alignToTop=true)
     })
     $('#submitEvents').on('click', submitEvents)
     $('#pwInput').keypress(e => {
@@ -219,9 +223,11 @@ $(document).ready(() => {
         }
     })
     $('#editToggle').on('change', () => {
-        $('#editEventTable').children('tr').not('.templateRow').remove()
-        EVENTS.forEach(addEditTableRow)
-        setStatsState()
+        if ($('#editToggle').is(':checked')) {
+            $('#editEventTable').children('tr').not('.templateRow').remove()
+            EVENTS.forEach(addEditTableRow)
+        }
+        
         setEditState()
     })
     $('#statsToggle').on('change', setStatsState)
@@ -229,7 +235,7 @@ $(document).ready(() => {
     reload()
 })
 
-$(document).on("focus", () => {
+$(window).on("focus", () => {
     if (!$('#editToggle').is(':checked'))
         reload()
 })

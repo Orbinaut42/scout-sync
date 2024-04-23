@@ -7,7 +7,7 @@ from flask import Flask, request, abort
 from markupsafe import escape
 from apscheduler.schedulers.background import BackgroundScheduler
 from ..config import config
-from ..sync import sync, Event
+from ..sync import sync, Event, WebCacheHandler
 
 logging.basicConfig(
     filename=config.get('COMMON', 'log_file'),
@@ -37,7 +37,8 @@ def escape_json(j):
 
 app = Flask(
     'scout_sync',
-    static_folder=os.path.join(os.path.dirname(__file__), 'static'))
+    static_folder='app/static',
+    static_url_path='')
 
 @app.route('/')
 def root():
@@ -50,7 +51,7 @@ def edit():
     """POST access point for edits from webpage
     
     Request data should be:
-    {passwort: password, events: [json_events]}"""
+    {password: password, events: [json_events]}"""
 
     logging.info(f'Edit request from {request.access_route[0]}')
     try:
@@ -67,16 +68,14 @@ def edit():
 
     # check if event list is valid
     try:
-        for event in events:
-            Event.from_json(event)
+        event_list = [Event.from_json(event) for event in events]
 
     except Exception as e:
         logging.exception(e)
         abort(400)
 
-    with open(config.get('COMMON', 'web_cache_file'), 'w') as web_cache_file:
-        json.dump(events, web_cache_file)
-        logging.info(f'Events cache updated from webpage.')
+    WebCacheHandler(config.get('COMMON', 'web_cache_file')).store_events(event_list)
+    logging.info(f'Events cache updated from webpage.')
 
     scheduler.add_job(sync, kwargs={'source': 'cache'})
 
@@ -97,15 +96,14 @@ def events():
     Returns the cached events in JSON format"""
 
     logging.info(f'Events update request from {request.access_route[0]}')
-
-    try:
-        with open(config.get('COMMON', 'web_cache_file'), 'r') as web_cache_file:
-            return {
-                'events': json.load(web_cache_file),
-                'names': list(config['EMAILS'].keys())}
-        
-    except FileNotFoundError:
+    events =  WebCacheHandler(config.get('COMMON', 'web_cache_file')).json_events()
+    if events is None:
         abort(500, description='Events have not been cached yet.')
+
+    return {
+        'events': events,
+        'names': list(config['EMAILS'].keys())}
+
 
 def start_sync_job():
     """start a scheduler with the calendar syncronisation job defined in the SYNC_JOB config section"""
