@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="shortcut icon" href="favicon.ico">
-    <link rel="stylesheet" href="style.css"/>
-    <script src="jquery-3.7.1.min.js"></script>
-    <script src="list.js"></script>
-    <title>Scouting 2024/25</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+    <script src="{{ url_for('static', filename='jquery-3.7.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='list.js') }}"></script>
+    <title>{{title}}</title>
   </head>
   <body>
     <div id="container">
@@ -35,17 +35,23 @@
             <td class="editLocationTd"></td>
             <td class="editLeagueTd"></td>
             <td class="editOpponentTd"></td>
-            <td class="editScouterTd"><select></select></td>
+            <td class="editScouterTd">
+              <select>
+                <option value=""></option>
+                {% for scouter in names: %}
+                <option value="{{scouter}}">{{scouter}}</option>
+                {% endfor %}
+              </select>
+            </td>
             <td class="deleteButtonTd"><button class="deleteButton"></button></td>
           </tr>
         </tbody>
       </table>
-
       <div id="editDiv">
         <div id="addRowDiv" class="editOnly">
           <button id="addRowButton"></button>
         </div>
-
+  
         <div id="statsTableContainer" class="editOnly">
           <table id="statsTable">
             <thead>
@@ -58,23 +64,25 @@
               </tr>
             </thead>
             <tbody>
-              <tr class="templateRow" hidden="true">
-                <td class="nameTd"></td>
+              {% for scouter in names: %}
+              <tr>
+                <td class="nameTd">{{scouter}}</td>
                 <td class="cat1Td">0</td>
                 <td class="cat2Td">0</td>
                 <td class="cat3Td">0</td>
                 <td class="sumTd">0</td>
               </tr>
+              {% endfor %}
             </tbody>
           </table>
         </div>
-
+  
         <div id="submitDiv" class="editOnly">
           <input id="pwInput" type="password" placeholder="Passwort">
           <button id="submitEvents">Übernehmen</button>
           <span id="submitResponse"></span>      
         </div>
-
+  
         <div id="sliderDiv">
           <label class="switch">
             <input type="checkbox" id="editToggle">
@@ -82,7 +90,7 @@
           </label>
           <label for="editToggle">Bearbeiten</label>
           <label class="switch editOnly">
-            <input type="checkbox" id="statsToggle" checked>
+            <input type="checkbox" id="statsToggle">
             <span class="slider"></span>
           </label>
           <label for="statsToggle" class="editOnly">Einsätze</label>

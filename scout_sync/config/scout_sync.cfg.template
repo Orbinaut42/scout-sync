@@ -2,6 +2,9 @@
 log_file = scout_sync.log
 timezone = Europe/Berlin
 
+# web page title
+title = Scouting 2024/25
+
 # the port on which the app should listen
 port = 8000
 
@@ -9,7 +12,7 @@ port = 8000
 schedule_request_timeout = 20
 
 # events cache file name
-web_cache_file = events.json
+web_cache_file = events.json.cache
 
 # Password for submitting from the webpage
 submit_pw =
@@ -27,7 +30,7 @@ service_account_info =
 id =
 
 [SCHEDULE_LEAGUES]
-# key = league name, league ID, teamPermanentId
+# key = league name, league ID, teamPermanentId, teamSeasonId
 
 [SCHEDULE_ARENAS]
 # arena id = Name
@@ -36,4 +39,5 @@ id =
 # Name = e@mail.com
 
 [SYNC_JOB]
-# interval = 60
+# interval for updating the calender from the schedule in minutes
+interval = 60

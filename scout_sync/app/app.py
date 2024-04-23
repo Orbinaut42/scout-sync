@@ -1,9 +1,7 @@
 import sys
-import os
 import logging
-import json
 import arrow
-from flask import Flask, request, abort
+from flask import Flask, request, abort, render_template
 from markupsafe import escape
 from apscheduler.schedulers.background import BackgroundScheduler
 from ..config import config
@@ -37,8 +35,9 @@ def escape_json(j):
 
 app = Flask(
     'scout_sync',
-    static_folder='app/static',
-    static_url_path='')
+    template_folder='app/web',
+    static_folder='app/web',
+    static_url_path='/list')
 
 @app.route('/')
 def root():
@@ -88,7 +87,10 @@ def _list():
     Returns a HTML document with the empty table"""
 
     logging.info(f'List request from {request.access_route[0]}')
-    return app.send_static_file('list.html')
+    return render_template(
+        'list.html',
+        title=config.get('COMMON', 'title'),
+        names=sorted(list(config['EMAILS'].keys())))
 
 @app.route('/list/events')
 def events():
@@ -100,10 +102,7 @@ def events():
     if events is None:
         abort(500, description='Events have not been cached yet.')
 
-    return {
-        'events': events,
-        'names': list(config['EMAILS'].keys())}
-
+    return events
 
 def start_sync_job():
     """start a scheduler with the calendar syncronisation job defined in the SYNC_JOB config section"""

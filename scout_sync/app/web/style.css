@@ -2,6 +2,10 @@ body {
     font-family: Tahoma, sans-serif;
 }
 
+.editOnly {
+    display: none;
+}
+
 table {
     width: 100%;
     table-layout: fixed;
@@ -85,9 +89,9 @@ tr:nth-child(odd) {
 #editDiv {
     position: sticky;
     bottom: 0;
+    width: 100%;
     background-color: white;
-    border: 2px solid dimgray;
-    border-radius: 4px;
+    border-top: 2px solid dimgray;
 }
 
 #editDiv div {
@@ -97,10 +101,6 @@ tr:nth-child(odd) {
 #submitDiv *, #editDiv label {
     font-size: 3vw;
     vertical-align: middle;
-}
-
-.editOnly {
-    display: none;
 }
 
 input, button, select, .switch {
@@ -237,4 +237,20 @@ input:checked + .slider:before {
     button {
         scale: 0.7
     } 
+}
+
+@media print {
+    #editDiv, br {
+        display: none;
+    }
+
+    table, table select {
+        font-size: initial;
+        width: initial;
+        table-layout: initial;
+    }
+
+    .past {
+        color: initial;
+    }
 }

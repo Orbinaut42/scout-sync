@@ -1,5 +1,4 @@
 EVENTS = []
-NAMES = []
 
 function addViewTableRow(event) {
     const date = new Date(event.datetime)
@@ -21,11 +20,11 @@ function addViewTableRow(event) {
 
     const $newViewRow = $('#viewEventTable').children('.templateRow').clone().removeAttr('class')
     $newViewRow.addClass(date < Date.now() ? 'past' : 'upcoming')
-    $newViewRow.children('.viewDateTimeTd').html(`${dateString}<br>${timeString}`)
+    $newViewRow.children('.viewDateTimeTd').html(`${dateString} <br>${timeString}`)
     $newViewRow.children('.viewLocationTd').text(location || '')
     $newViewRow.children('.viewLeagueTd').text(league || '')
     $newViewRow.children('.viewOpponentTd').text(opponent || '')
-    $newViewRow.children('.viewScouterTd').html(scouters.join('<br>'))
+    $newViewRow.children('.viewScouterTd').html(scouters.join(' <br>'))
     $newViewRow.appendTo($("#viewEventTable")).prop('hidden', false)
 }
 
@@ -91,38 +90,23 @@ function addEditTableRow(event) {
     return $newEditRow
 }
 
-function reload () {
+function reloadEvents () {
     $.getJSON('/list/events', (response, status) => {  
         if (status != 'success') {
             throw new Error(status)
         }
         
-        EVENTS = response.events.sort((e1, e2) => new Date(e1.datetime) - new Date(e2.datetime))
-        NAMES = response.names.sort()
-        
-        $('#editEventTable').find('select').html('').append(
-            $.map(['', ...NAMES], n => $('<option/>', {'value': n}).text(n))
-        )
+        EVENTS = response.sort((e1, e2) => new Date(e1.datetime) - new Date(e2.datetime))
 
         $('#viewEventTable').children('tr').not('.templateRow').remove()
-        $('#editEventTable').children('tr').not('.templateRow').remove()
-        $('#statsTable').children('tbody').children('tr').not('.templateRow').remove()
-        $('#pwInput').val('')
-        $('#submitResponse').text('')
-
         EVENTS.forEach(addViewTableRow)
         $('tr.upcoming').get()[0].scrollIntoView(alignToTop=true)
-
-        NAMES.forEach(n => {
-            const $newRow = $('#statsTable').children('tbody').children('.templateRow').clone().removeAttr('class')
-            $newRow.children('.nameTd').text(n)
-            $newRow.appendTo($("#statsTable").children("tbody")).prop('hidden', false)
-        })
     })
+}
 
-    $('#editToggle').prop('checked', false)
-    setEditState()
-    setStatsState()
+function updateEditTable () {
+    $('#editEventTable').children('tr').not('.templateRow').remove()
+    EVENTS.forEach(addEditTableRow)
 }
 
 function getEditTableData () {
@@ -148,11 +132,11 @@ function submitEvents() {
         }
     )
     .done(() => {
-            $('#submitResponse').text('Ok')
-            $('#pwInput').val('')
-            reload()
-        }
-    )
+        reloadEvents()
+        $('#submitResponse').text('Ok')
+        $("#editToggle").prop('checked', false)
+        setEditState()
+    })
     .fail((data) => {
             if (data.status == 401) $('#submitResponse').text('Passwort falsch')
             else $('#submitResponse').text(`${data.status}: ${data.statusText}`)
@@ -168,8 +152,10 @@ function updateStatsTable() {
         c3: null
     }
     
-    const statsTable = Object.fromEntries(NAMES.map(n => [
-        n, Object.fromEntries(Object.keys(categories).map(c => [c, 0]))
+    const $rows = $('#statsTable').children('tbody').children('tr')
+
+    const statsTable = Object.fromEntries($rows.children('.nameTd').get().map(n => [
+        $(n).text(), Object.fromEntries(Object.keys(categories).map(c => [c, 0]))
     ]))
 
     for (const game of getEditTableData()) {
@@ -181,7 +167,7 @@ function updateStatsTable() {
         }
     }
 
-    $('#statsTable').children('tbody').children('tr').not('.templateRow').each((i, tr) => {
+    $rows.each((i, tr) => {
         const $tr = $(tr)
         const stats = statsTable[$tr.children('.nameTd').text()]
         $tr.children('.cat1Td').text(stats.c1)
@@ -198,6 +184,8 @@ function setEditState() {
     } else {
         $(".viewOnly").fadeIn()
         $(".editOnly").fadeOut()
+        $('#submitResponse').text('')
+        $('#pwInput').val('')
     }
 }
 
@@ -210,6 +198,11 @@ function setStatsState () {
 }
 
 $(document).ready(() => {
+    $('#editToggle').prop('checked', false)
+    $('#statsToggle').prop('checked', true)
+    setEditState()
+    setStatsState()
+
     new MutationObserver(updateStatsTable).observe($('#editEventTable')[0], {childList: true})
     $('#editEventTable').on('input', updateStatsTable)
     $('#addRowButton').on('click', () => {
@@ -223,19 +216,14 @@ $(document).ready(() => {
         }
     })
     $('#editToggle').on('change', () => {
-        if ($('#editToggle').is(':checked')) {
-            $('#editEventTable').children('tr').not('.templateRow').remove()
-            EVENTS.forEach(addEditTableRow)
-        }
-        
+        if ($('#editToggle').is(':checked')) updateEditTable()
         setEditState()
     })
     $('#statsToggle').on('change', setStatsState)
 
-    reload()
+    reloadEvents()
 })
 
 $(window).on("focus", () => {
-    if (!$('#editToggle').is(':checked'))
-        reload()
+        reloadEvents()
 })
