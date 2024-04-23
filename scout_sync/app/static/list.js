@@ -212,7 +212,7 @@ function setStatsState () {
 $(document).ready(() => {
     new MutationObserver(updateStatsTable).observe($('#editEventTable')[0], {childList: true})
     $('#editEventTable').on('input', updateStatsTable)
-    $('#addRow').on('click', () => {
+    $('#addRowButton').on('click', () => {
         addEditTableRow(null).get()[0].scrollIntoView(alignToTop=true)
     })
     $('#submitEvents').on('click', submitEvents)

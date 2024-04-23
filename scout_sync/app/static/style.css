@@ -2,23 +2,10 @@ body {
     font-family: Tahoma, sans-serif;
 }
 
-#editDiv {
-    position: sticky;
-    bottom: 0;
-    background-color: white;
-    border: 2px solid dimgray;
-    border-radius: 4px;
-    padding: 4px;
-}
-
-#submitDiv *, #editDiv label {
-    font-size: 3vw;
-}
-
 table {
+    width: 100%;
     table-layout: fixed;
     border-spacing: 0px;
-    width: 100%;
 }
 
 table, table select {
@@ -66,6 +53,10 @@ th, td {
     vertical-align: top;
 }
 
+.deleteButtonTd {
+    text-align: right;
+}
+
 .editLocationTd[contenteditable=false],
 .editLeagueTd[contenteditable=false],
 .editOpponentTd[contenteditable=false] {
@@ -91,6 +82,23 @@ tr:nth-child(odd) {
     color: dimgray;
 }
 
+#editDiv {
+    position: sticky;
+    bottom: 0;
+    background-color: white;
+    border: 2px solid dimgray;
+    border-radius: 4px;
+}
+
+#editDiv div {
+    margin: .5em;
+}
+
+#submitDiv *, #editDiv label {
+    font-size: 3vw;
+    vertical-align: middle;
+}
+
 .editOnly {
     display: none;
 }
@@ -100,9 +108,6 @@ input, button, select, .switch {
     border: 2px solid dimgray;
     border-radius: 4px;
     cursor: pointer;
-    margin-top: 2px;
-    margin-bottom: 2px;
-    margin-left: 2px;
 }
 
 button:hover, input:enabled:hover, select:hover {
@@ -116,34 +121,49 @@ button {
     min-height: 40px;
     text-align: center;
     line-height: 1em;
-
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 button:disabled {
     display: none;
 }
 
-.deleteButton, #addRow {
+.deleteButton, #addRowButton {
     color: dimgrey;
     font-size: 25px;
     font-weight: bold;
 }
 
-#submitEvents {
+.deleteButton {
+    background-image: url(icon_delete.png);  
+}
+
+#addRowButton {
+    background-image: url(icon_add.png);  
+}
+
+#addRowDiv {
+    text-align: right;
+}
+
+#pwInput, #submitEvents {
     width: 8em;
 }
 
-#statsTable {
-    margin-top: 2px;
-    margin-bottom: 2px;
+#sliderDiv .switch:not {
+    margin-right: 4em
 }
 
 .switch {
     position: relative;
     display: inline-block;
-    width: 80px;
-    height: 40px;
-  }
+    width: 56px;
+    height: 16px;
+    margin: 8px;
+    border-radius: 4px;
+}
   
 .switch input {
     opacity: 0;
@@ -153,7 +173,6 @@ button:disabled {
 
 .slider {
     position: absolute;
-    cursor: pointer;
     top: 0;
     left: 0;
     right: 0;
@@ -161,6 +180,7 @@ button:disabled {
     background-color: darkgrey;
     -webkit-transition: .4s;
     transition: .4s;
+    cursor: pointer;
 }
 
 .slider:before {
@@ -168,12 +188,12 @@ button:disabled {
     content: "";
     height: 32px;
     width: 32px;
-    border-radius: 3px;
-    left: 4px;
-    bottom: 4px;
+    left: -8px;
+    bottom: -8px;
     background-color: black;
     -webkit-transition: .4s;
     transition: .4s;
+    border-radius: 4px;
 }
 
 input:checked + .slider {
@@ -186,25 +206,26 @@ input:checked + .slider:before {
     transform: translateX(40px);
 }
 
-label {
-    vertical-align: middle;
+#sliderDiv .switch:not(:first-child) {
+    margin-left: 2em
 }
 
 @media only screen and (min-width: 1280px) {
-    #wrapperDiv {
+    #container {
         width: min-content;
     }
     
     table, table select {
         font-size: initial;
         width: initial;
+        table-layout: initial;
     }
 
     #submitDiv *, #editDiv label {
         font-size: initial;
     }
 
-    #viewEventTable td, #editEventTable td {
+    #viewEventTable td, #editEventTable td:not(:last-child) {
         font-size: initial;
         padding-right: 2em;
     }

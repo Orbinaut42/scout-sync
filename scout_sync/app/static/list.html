@@ -8,8 +8,8 @@
     <title>Scouting 2024/25</title>
   </head>
   <body>
-    <div id="wrapperDiv">
-      <table>
+    <div id="container">
+      <table id="eventTable">
         <thead>
           <tr>
             <th id="dateTimeColumn">Datum</th>
@@ -36,21 +36,17 @@
             <td class="editLeagueTd"></td>
             <td class="editOpponentTd"></td>
             <td class="editScouterTd"><select></select></td>
-            <td><button class="deleteButton">X</button></td>
+            <td class="deleteButtonTd"><button class="deleteButton"></button></td>
           </tr>
         </tbody>
       </table>
 
       <div id="editDiv">
-        <button id="addRow" class="editOnly">+</button>
-
-        <div id="submitDiv">
-          <input id="pwInput" class="editOnly" type="password" placeholder="Passwort">
-          <button id="submitEvents" class="editOnly">Übernehmen</button>
-          <span id="submitResponse" class="editOnly"></span>      
+        <div id="addRowDiv" class="editOnly">
+          <button id="addRowButton"></button>
         </div>
 
-        <div id="statsTableWrapper" class="editOnly">
+        <div id="statsTableContainer" class="editOnly">
           <table id="statsTable">
             <thead>
               <tr>
@@ -72,17 +68,25 @@
             </tbody>
           </table>
         </div>
-      
-        <label class="switch">
-          <input type="checkbox" id="editToggle">
-          <span class="slider"></span>
-        </label>
-        <label for="editToggle">Bearbeiten</label>
-        <label class="switch editOnly">
-          <input type="checkbox" id="statsToggle" checked>
-          <span class="slider"></span>
-        </label>
-        <label for="statsToggle" class="editOnly">Einsätze</label>
+
+        <div id="submitDiv" class="editOnly">
+          <input id="pwInput" type="password" placeholder="Passwort">
+          <button id="submitEvents">Übernehmen</button>
+          <span id="submitResponse"></span>      
+        </div>
+
+        <div id="sliderDiv">
+          <label class="switch">
+            <input type="checkbox" id="editToggle">
+            <span class="slider"></span>
+          </label>
+          <label for="editToggle">Bearbeiten</label>
+          <label class="switch editOnly">
+            <input type="checkbox" id="statsToggle" checked>
+            <span class="slider"></span>
+          </label>
+          <label for="statsToggle" class="editOnly">Einsätze</label>
+        </div>
       </div>
     </div>
   </body>
