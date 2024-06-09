@@ -52,7 +52,7 @@ class Event:
                 scouter_list.append(cls.__names[a['email']])
             except KeyError:
                 logging.warning(
-                    f"Unknown email in calendar event at {e.datetime}: {a['email']}")
+                    f"Unknown email in calendar event at {event['start']['dateTime']}: {a['email']}")
 
         event_extended_properties = event.get('extendedProperties', {}).get('private', {})
         schedule_info = {
