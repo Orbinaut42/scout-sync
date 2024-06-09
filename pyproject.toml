@@ -2,7 +2,7 @@
 name = "scout-sync"
 version = "2.0.0"
 description = ""
-authors = [""]
+authors = ["name <e@mail.com>"]
 
 [tool.poetry.dependencies]
 python = "*"
