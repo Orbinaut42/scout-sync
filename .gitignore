@@ -12,4 +12,4 @@ venv/
 *.lock
 *.cache
 secrets.json
-scout_sync.cfg
+scout_sync_local.cfg
