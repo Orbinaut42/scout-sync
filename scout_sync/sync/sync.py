@@ -95,7 +95,7 @@ class Event:
             opponent = None
 
         e = cls(
-            id = event['matchNo'],
+            id = f"{event['ligaData']['verbandId']}_{event['matchNo']}",
             datetime = datetime,
             location = location,
             league = league_name,
@@ -114,7 +114,7 @@ class Event:
         except:
             datetime = arrow.get(2147483648, tzinfo=TIMEZONE)
         e = cls(
-            id = event['id'],
+            id = str(event['id']),
             datetime = datetime,
             location = event.get('location') or None,
             league = event.get('league') or None,
@@ -211,7 +211,7 @@ class Event:
 
 
 class CalendarHandler(GoogleCalendarAPI):
-    """Manages the communtcation with the Google Calendar API"""
+    """Manages the communication with the Google Calendar API"""
 
     def __init__(self, calendar_id):
         super().__init__(calendar_id, TIMEZONE, SIMULATE)
@@ -434,6 +434,7 @@ class ScheduleHandler:
                 match_info_data['matchNo'] is not None,
                 match_info_data['matchId'] is not None,
                 match_info_data['ligaData']['ligaId'] is not None,
+                match_info_data['ligaData']['verbandId'] is not None,
                 match_info_data['abgesagt'] is not None,
                 match_info_data['verzicht'] is not None]
             
