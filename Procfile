@@ -1,1 +1,1 @@
-web: gunicorn -w 1 -b 0.0.0.0:8000 'scout_sync.app:app_startup()' --timeout 60 --threads 4
+web: gunicorn -w 1 -b 0.0.0.0 'scout_sync.app:app_startup()' --timeout 60 --threads 4
