@@ -2,7 +2,7 @@ import sys
 import logging
 import arrow
 from flask import Flask, request, abort, render_template
-from markupsafe import escape
+from markupsafe import Markup, escape
 from apscheduler.schedulers.background import BackgroundScheduler
 from ..config import config
 from ..sync import sync, Event, WebCacheHandler
@@ -33,6 +33,18 @@ def escape_json(j):
     
     return j
 
+def unescape_json(j):
+    if isinstance(j, str):
+        j = Markup(j).unescape()
+    elif isinstance(j, list):
+        for i in range(len(j)):
+            j[i] = unescape_json(j[i])
+    elif isinstance(j, dict):
+        for key in j:
+            j[key] = unescape_json(j[key])
+    
+    return j
+
 app = Flask(
     'scout_sync',
     template_folder='app/web',
@@ -53,8 +65,9 @@ def edit():
     {password: password, events: [json_events]}"""
 
     logging.info(f'Edit request from {request.access_route[0]}')
+
     try:
-        request_data = escape_json(request.json)
+        request_data =  unescape_json(request.json)
     except Exception as e:
         logging.exception(e)
         abort(400)
@@ -98,7 +111,15 @@ def events():
     Returns the cached events in JSON format"""
 
     logging.info(f'Events update request from {request.access_route[0]}')
-    events =  WebCacheHandler(config.get('COMMON', 'web_cache_file')).json_events()
+
+    try:
+        events =  escape_json(
+            WebCacheHandler(config.get('COMMON', 'web_cache_file')).json_events()
+        )
+    except Exception as e:
+        logging.exception(e)
+        abort(400)
+
     if events is None:
         abort(500, description='Events have not been cached yet.')
 
