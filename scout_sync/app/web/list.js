@@ -112,7 +112,7 @@ function updateEditTable () {
 function getEditTableData () {
     return $('#editEventTable').children('tr').not('.templateRow').map((i, row) => {return {
         id: $(row).data('gameId'),
-        datetime: Date.parse($(row).children('.editDateTimeTd').children('input').map((i, input) => input.value).get().join(' ')),
+        datetime: Date.parse($(row).children('.editDateTimeTd').children('input').map((i, input) => input.value).get().join(' ').trim()),
         location: $(row).children('.editLocationTd').text(),
         league: $(row).children('.editLeagueTd').text(),
         opponent: $(row).children('.editOpponentTd').text(),
