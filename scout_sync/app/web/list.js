@@ -100,7 +100,13 @@ function reloadEvents () {
 
         $('#viewEventTable').children('tr').not('.templateRow').remove()
         EVENTS.forEach(addViewTableRow)
-        $('tr.upcoming').get()[0].scrollIntoView(alignToTop=true)
+
+        const pastEvents = $('tr.past')
+        const upcomingEvents = $('tr.upcoming')
+        if (pastEvents.length > 0)
+            pastEvents[Math.max(pastEvents.length - 2, 0)].scrollIntoView(alignToTop=true)
+        else if (upcomingEvents.length > 0)
+            upcomingEvents[0].scrollIntoView(alignToTop=true)
     })
 }
 
