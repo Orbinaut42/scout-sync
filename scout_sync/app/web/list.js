@@ -110,14 +110,19 @@ function updateEditTable () {
 }
 
 function getEditTableData () {
-    return $('#editEventTable').children('tr').not('.templateRow').map((i, row) => {return {
-        id: $(row).data('gameId'),
-        datetime: Date.parse($(row).children('.editDateTimeTd').children('input').map((i, input) => input.value).get().join(' ').trim()),
-        location: $(row).children('.editLocationTd').text(),
-        league: $(row).children('.editLeagueTd').text(),
-        opponent: $(row).children('.editOpponentTd').text(),
-        scouters: $(row).children('.editScouterTd').children('select').map((i, s) => $(s).val()).get().filter(s => s !== '')
-    }}).get()
+    return $('#editEventTable').children('tr').not('.templateRow').map((i, row) => {
+        const dateTime = $(row).children('.editDateTimeTd').children('input')
+        return {
+            id: $(row).data('gameId'),
+            datetime: Date.parse(
+                `${dateTime.filter('[type="date"]').val()} ${dateTime.filter('[type="time"]').val() || '00:00'}`
+            ),
+            location: $(row).children('.editLocationTd').text(),
+            league: $(row).children('.editLeagueTd').text(),
+            opponent: $(row).children('.editOpponentTd').text(),
+            scouters: $(row).children('.editScouterTd').children('select').map((i, s) => $(s).val()).get().filter(s => s !== '')
+        }
+    }).get()
 }
 
 function submitEvents() {
