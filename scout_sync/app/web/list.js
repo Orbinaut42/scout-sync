@@ -158,7 +158,7 @@ function submitEvents() {
 
 function updateStatsTable() {
     const categories = {
-        c1: /(?<![RNJ])BBL|Euro/,
+        c1: /(?<![RNJD])BBL|Euro/,
         c2: /ProB/,
         c3: null
     }
