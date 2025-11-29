@@ -7,6 +7,7 @@ authors = ["name <e@mail.com>"]
 [tool.poetry.dependencies]
 python = "*"
 Flask = "*"
+caldav = "*"
 google-api-python-client = "*"
 google-auth-oauthlib = "*"
 requests = "*"
