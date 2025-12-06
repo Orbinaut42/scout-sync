@@ -15,6 +15,7 @@ xds-protos = "*"
 arrow = "*"
 gunicorn = "*"
 APScheduler = "*"
+vobject = "*"
 
 [tool.poetry.dev-dependencies]
 
