@@ -29,6 +29,13 @@ service_account_info =
 # dont use calendar id 'primary' with service account authentication
 id =
 
+[CALDAV]
+# CalDAV Calendar
+url =
+calendar_name =
+username =
+password =
+
 [SCHEDULE_LEAGUES]
 # key = league name, league ID, teamPermanentId, teamSeasonId
 

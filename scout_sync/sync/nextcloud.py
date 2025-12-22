@@ -1,23 +1,33 @@
-import os
-import vobject
+# import os
+# import vobject
 
 # from datetime import datetime, timezone, timedelta
 # from caldav.davclient import get_davclient
 
-from . import carddav
+from .sync import CalDavHandler
 
-dav = carddav.PyCardDAV(
-    resource=os.getenv('CARDDAV_URL'),
-    user=os.getenv('CALDAV_USERNAME'),
-    passwd=os.getenv('CALDAV_PASSWORD'))
+calendar = CalDavHandler()
 
-abook = dav.get_abook()
-href = list(abook.keys())[42]
-card = dav.get_vcard(href)
-vc = vobject.readOne(card.decode('utf-8'))
-name = vc.fn.value
-email = vc.email.value
-print(name, email)
+with calendar.connect():
+    for ev in calendar.list_events():
+        print()
+
+
+
+# from . import carddav
+
+# dav = carddav.PyCardDAV(
+#     resource=os.getenv('CARDDAV_URL'),
+#     user=os.getenv('CALDAV_USERNAME'),
+#     passwd=os.getenv('CALDAV_PASSWORD'))
+
+# abook = dav.get_abook()
+# href = list(abook.keys())[42]
+# card = dav.get_vcard(href)
+# vc = vobject.readOne(card.decode('utf-8'))
+# name = vc.fn.value
+# email = vc.email.value
+# print(name, email)
 
 
 # with get_davclient() as client:
