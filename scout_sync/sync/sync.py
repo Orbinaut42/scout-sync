@@ -43,6 +43,19 @@ class Event:
     def from_calendar_event(cls, event):
         """Create an event from a Google Calendar event"""
 
+        event_extended_properties = event.get('extendedProperties', {}).get('private', {})
+        event_id = event_extended_properties.get('matchNo')
+        if event_id is None:
+            logging.warning(
+                f"Invalid event at {event['start'].get('dateTime') or event['start'].get('date')}")
+            return
+
+        schedule_info = {
+                'match_id': event_extended_properties.get('matchId'),
+                'league_id': event_extended_properties.get('leagueId')}
+        if schedule_info['match_id'] is None and schedule_info['match_id'] is None:
+            schedule_info = None
+
         scouter_list = []
         for a in event.get('attendees', []):
             if a['responseStatus'] == 'declined':
@@ -52,18 +65,11 @@ class Event:
                 scouter_list.append(cls.__names[a['email']])
             except KeyError:
                 logging.warning(
-                    f"Unknown email in calendar event at {event['start']['dateTime']}: {a['email']}")
-
-        event_extended_properties = event.get('extendedProperties', {}).get('private', {})
-        schedule_info = {
-                'match_id': event_extended_properties.get('matchId'),
-                'league_id': event_extended_properties.get('leagueId')}
-        if schedule_info['match_id'] is None and schedule_info['match_id'] is None:
-            schedule_info = None
+                    f"Unknown email in calendar event at {event['start'].get('dateTime') or event['start'].get('date')}: {a['email']}")
 
         e = cls(
-            id = event_extended_properties.get('matchNo'),
-            datetime = arrow.get(event['start']['dateTime']),
+            id = event_id,
+            datetime = arrow.get(event['start'].get('dateTime') or event['start'].get('date')),
             location = event.get('location', None),
             league = event.get('summary', '').replace('Scouting ', '') or None,
             opponent = event.get('description', None),
@@ -284,8 +290,10 @@ class CalendarHandler(GoogleCalendarAPI):
         events = []
         for ce in calendar_events:
             event = Event.from_calendar_event(ce)
-            self.__ids[event.id] = ce['id']
-            events.append(event)
+            
+            if event is not None:
+                self.__ids[event.id] = ce['id']
+                events.append(event)
 
         return events
 
