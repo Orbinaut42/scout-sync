@@ -16,7 +16,7 @@
 - Run a sync from the cached JSON events with `python -m scout_sync.sync --from cache`.
 - Refresh OAuth credentials with `python -m scout_sync.sync --refresh-credentials`.
 - Production uses the command in [Procfile](Procfile).
-- There is currently no automated test suite, linter, formatter, or CI configuration. For changes, at minimum compile-check modified Python files and manually exercise the affected CLI or Flask route when credentials/configuration permit.
+- There is currently no automated test suite, formatter, or CI configuration. For changes, at minimum compile-check modified Python files and manually exercise the affected CLI or Flask route when credentials/configuration permit.
 
 ## Configuration and safety
 

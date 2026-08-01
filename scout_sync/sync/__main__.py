@@ -12,7 +12,7 @@ ARGS = parser.parse_args()
 if ARGS.refresh_credentials:
     credentials = refresh_oauth_token()
     print(credentials.to_json())
-    
+
 if ARGS.source:
     sync(ARGS.source)
 

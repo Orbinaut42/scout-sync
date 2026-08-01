@@ -9,9 +9,9 @@ from ..sync import sync, Event, WebCacheHandler
 
 logging.basicConfig(
     filename=config.get('COMMON', 'log_file'),
-        format='%(asctime)s %(levelname)s: %(message)s',
-        datefmt='%Y-%m-%dT%H:%M:%S',
-        level=logging.INFO)
+    format='%(asctime)s %(levelname)s: %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S',
+    level=logging.INFO)
 
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
 logging.getLogger('apscheduler').setLevel(logging.ERROR)
@@ -20,6 +20,7 @@ sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.exception(
 
 scheduler = BackgroundScheduler(timzone=config.get('COMMON', 'timezone'))
 scheduler.start()
+
 
 def escape_json(j):
     if isinstance(j, str):
@@ -30,8 +31,9 @@ def escape_json(j):
     elif isinstance(j, dict):
         for key in j:
             j[key] = escape_json(j[key])
-    
+
     return j
+
 
 def unescape_json(j):
     if isinstance(j, str):
@@ -42,8 +44,9 @@ def unescape_json(j):
     elif isinstance(j, dict):
         for key in j:
             j[key] = unescape_json(j[key])
-    
+
     return j
+
 
 app = Flask(
     'scout_sync',
@@ -51,23 +54,25 @@ app = Flask(
     static_folder='app/web',
     static_url_path='/list')
 
+
 @app.route('/')
 def root():
     """ping access point"""
 
     return ''
 
+
 @app.post('/list/edit')
 def edit():
     """POST access point for edits from webpage
-    
+
     Request data should be:
     {password: password, events: [json_events]}"""
 
     logging.info(f'Edit request from {request.access_route[0]}')
 
     try:
-        request_data =  unescape_json(request.json)
+        request_data = unescape_json(request.json)
     except Exception as e:
         logging.exception(e)
         abort(400)
@@ -87,7 +92,7 @@ def edit():
         abort(400)
 
     WebCacheHandler(config.get('COMMON', 'web_cache_file')).store_events(event_list)
-    logging.info(f'Events cache updated from webpage.')
+    logging.info('Events cache updated from webpage.')
 
     scheduler.add_job(sync, kwargs={'source': 'cache'})
 
@@ -105,6 +110,7 @@ def _list():
         title=config.get('COMMON', 'title'),
         names=sorted(list(config['EMAILS'].keys())))
 
+
 @app.route('/list/events')
 def events():
     """GET access point for the current table contents
@@ -113,7 +119,7 @@ def events():
     logging.info(f'Events update request from {request.access_route[0]}')
 
     try:
-        events =  escape_json(
+        events = escape_json(
             WebCacheHandler(config.get('COMMON', 'web_cache_file')).json_events()
         )
     except Exception as e:
@@ -125,12 +131,14 @@ def events():
 
     return events
 
-def start_sync_job():
-    """start a scheduler with the calendar syncronisation job defined in the SYNC_JOB config section"""
 
-    if not 'SYNC_JOB' in config:
+def start_sync_job():
+    """start a scheduler with the calendar syncronisation job
+    defined in the SYNC_JOB config section"""
+
+    if 'SYNC_JOB' not in config:
         return
-    
+
     interval = config.getint('SYNC_JOB', 'interval')
 
     scheduler.add_job(
@@ -139,6 +147,7 @@ def start_sync_job():
         kwargs={'source': 'schedule'},
         minutes=interval,
         start_date=arrow.get().shift(seconds=10).datetime)
+
 
 def app_startup():
     """app factory method launch function"""

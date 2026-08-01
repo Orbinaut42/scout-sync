@@ -19,7 +19,8 @@ SIMULATE = config.getboolean('COMMON', 'simulate')
 
 
 class Event:
-    """Manages conversion between different event representation formats (DBB schedule, Google Calendar, JSON)"""
+    """Manages conversion between different event representation
+    formats (DBB schedule, Google Calendar, JSON)"""
 
     __emails = {k: v for k, v in config.items('EMAILS')}
     __names = {v: k for k, v in config.items('EMAILS')}
@@ -65,16 +66,16 @@ class Event:
                 scouter_list.append(cls.__names[a['email']])
             except KeyError:
                 logging.warning(
-                    f"Unknown email in calendar event at {event['start'].get('dateTime') or event['start'].get('date')}: {a['email']}")
+                    f"Unknown email in calendar event at {event['start'].get('dateTime') or event['start'].get('date')}: {a['email']}")  # noqa: E501
 
         e = cls(
-            id = event_id,
-            datetime = arrow.get(event['start'].get('dateTime') or event['start'].get('date')),
-            location = event.get('location', None),
-            league = event.get('summary', '').replace('Scouting ', '') or None,
-            opponent = event.get('description', None),
-            scouters = scouter_list,
-            schedule_info = schedule_info)
+            id=event_id,
+            datetime=arrow.get(event['start'].get('dateTime') or event['start'].get('date')),
+            location=event.get('location', None),
+            league=event.get('summary', '').replace('Scouting ', '') or None,
+            opponent=event.get('description', None),
+            scouters=scouter_list,
+            schedule_info=schedule_info)
 
         return e
 
@@ -83,51 +84,51 @@ class Event:
         """Create an event from a JSON object (DBB schedule)"""
         try:
             datetime = arrow.get(f"{event['kickoffDate']}T{event['kickoffTime']}", tzinfo=TIMEZONE)
-        except:
+        except Exception:
             datetime = arrow.get(2147483648, tzinfo=TIMEZONE)
-        
+
         try:
             location_id = event['matchInfo']['spielfeld']['id']
             location = ScheduleHandler.arenas.get(str(location_id))
             if location is None:
                 logging.info(f"Event at {datetime}: Unknown arena ID in Schedule: {location_id}")
                 location = event['matchInfo']['spielfeld']['bezeichnung']
-        except:
+        except Exception:
             location = None
 
         try:
             opponent = event['guestTeam']['teamname']
-        except:
+        except Exception:
             opponent = None
 
         e = cls(
-            id = f"{event['ligaData']['verbandId']}_{event['matchNo']}",
-            datetime = datetime,
-            location = location,
-            league = league_name,
-            opponent = opponent,
-            schedule_info = {
+            id=f"{event['ligaData']['verbandId']}_{event['matchNo']}",
+            datetime=datetime,
+            location=location,
+            league=league_name,
+            opponent=opponent,
+            schedule_info={
                 'match_id': str(event['matchId']),
                 'league_id': str(event['ligaData']['ligaId'])})
-            
+
         return e
-    
+
     @classmethod
     def from_json(cls, event):
         """create an event from a json object"""
         try:
             datetime = arrow.get(event.get('datetime'), tzinfo=TIMEZONE)
-        except:
+        except Exception:
             datetime = arrow.get(2147483648, tzinfo=TIMEZONE)
         e = cls(
-            id = str(event['id']),
-            datetime = datetime,
-            location = event.get('location') or None,
-            league = event.get('league') or None,
-            opponent = event.get('opponent') or None,
-            scouters = event.get('scouters') or [],
-            schedule_info = event.get('schedule_info'))
-            
+            id=str(event['id']),
+            datetime=datetime,
+            location=event.get('location') or None,
+            league=event.get('league') or None,
+            opponent=event.get('opponent') or None,
+            scouters=event.get('scouters') or [],
+            schedule_info=event.get('schedule_info'))
+
         return e
 
     def as_calendar_event(self):
@@ -139,7 +140,7 @@ class Event:
             event['extendedProperties']['private'].update({
                 'matchId': self.schedule_info.get('match_id'),
                 'leagueId': self.schedule_info.get('league_id')})
-            
+
         event['start'] = {
             'dateTime': self.datetime.isoformat(),
             'timeZone': TIMEZONE
@@ -158,8 +159,8 @@ class Event:
             for scouter_name in self.scouters:
                 email = self.__emails.get(scouter_name)
                 if email is None:
-                    logging.warning(f"Unknown scouter name in event at {self.datetime}: {scouter_name}")
-                    
+                    logging.warning(f"Unknown scouter name in event at {self.datetime}: {scouter_name}")  # noqa: E501
+
                 if email not in [None, '']:
                     event['attendees'].append({
                         "email": email,
@@ -197,7 +198,7 @@ class Event:
                 self.league,
                 self.opponent,
                 *(self.scouters or [])))
-        
+
         return ', '.join(info_list)
 
     def __eq__(self, rhs):
@@ -209,7 +210,7 @@ class Event:
             self.id == rhs.id,
             self.datetime == rhs.datetime,
             self.location == rhs.location,
-            self.league == rhs.league, 
+            self.league == rhs.league,
             self.opponent == rhs.opponent,
             not compare_scouters or (
                 all(s in self.scouters for s in rhs.scouters) and
@@ -230,7 +231,7 @@ class CalendarHandler(GoogleCalendarAPI):
         except Exception as e:
             logging.error(
                 f"Connection to calendar with ID {self._resource_id} failed: {e}")
-            
+
             return False
 
         logging.info(f"Connected to calendar: {self._resource_id}")
@@ -257,13 +258,13 @@ class CalendarHandler(GoogleCalendarAPI):
             cal_id = self.__ids.get(ev.id)
             if cal_id is None:
                 raise ValueError(f"Can not update event {ev.id}: event is not in calendar!")
-            
+
             cal_ev = self._get_single_event(cal_id)
             old_ev = Event.from_calendar_event(cal_ev)
 
             self._update_event(cal_id, ev.as_calendar_event(), cal_ev)
             logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in calendar:\n\t-\t{old_ev}\n\t+\t{ev}")
+                f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in calendar:\n\t-\t{old_ev}\n\t+\t{ev}")  # noqa: E501
 
     def delete_events(self, events):
         if not self._service:
@@ -273,7 +274,7 @@ class CalendarHandler(GoogleCalendarAPI):
             cal_id = self.__ids.get(ev.id)
             if cal_id is None:
                 raise ValueError(f"Can not delete event {ev.id}: event is not in calendar!")
-            
+
             cal_ev = self._get_single_event(cal_id)
             old_ev = Event.from_calendar_event(cal_ev)
 
@@ -290,7 +291,7 @@ class CalendarHandler(GoogleCalendarAPI):
         events = []
         for ce in calendar_events:
             event = Event.from_calendar_event(ce)
-            
+
             if event is not None:
                 self.__ids[event.id] = ce['id']
                 events.append(event)
@@ -307,8 +308,8 @@ class ScheduleHandler:
     def __init__(self, leagues):
         self.__schedule = []
         self.__leagues = [
-            dict(zip(['league_name', 'league_id', 'team_permanent_id', 'team_season_id'], l))
-            for l in leagues]
+            dict(zip(['league_name', 'league_id', 'team_permanent_id', 'team_season_id'], league))
+            for league in leagues]
 
     def connect(self):
         api_url = 'https://www.basketball-bund.net/rest'
@@ -338,15 +339,15 @@ class ScheduleHandler:
                         continue
                 else:
                     self.__failed_league_downloads.append(str(league_id))
-                    logging.warning(f"Can not download schedule for league {league_name} ({r.status_code}: {r.reason})")
+                    logging.warning(f"Can not download schedule for league {league_name} ({r.status_code}: {r.reason})")  # noqa: E501
                     continue
-                
+
                 team_matches = []
                 for match in league_schedule['data']['matches']:
                     if not self.__validate_match(match):
                         try:
                             match_id = match['matchId']
-                        except:
+                        except Exception:
                             match_id = None
 
                         if match_id is not None:
@@ -356,10 +357,10 @@ class ScheduleHandler:
                         continue
 
                     if (
-                            (team_permanent_id and match['homeTeam']['teamPermanentId'] == team_permanent_id) or
-                            (team_season_id and match['homeTeam']['seasonTeamId'] == team_season_id)):
+                            (team_permanent_id and match['homeTeam']['teamPermanentId'] == team_permanent_id) or  # noqa: E501
+                            (team_season_id and match['homeTeam']['seasonTeamId'] == team_season_id)):  # noqa: E501
                         team_matches.append(match['matchId'])
-                   
+
                 # get the details for each match
                 for match_id in team_matches:
                     r = s.get(
@@ -371,19 +372,19 @@ class ScheduleHandler:
                             match_info = r.json()
                             if not self.__validate_match_info(match_info):
                                 raise ValueError()
-                            
+
                         except (json.decoder.JSONDecodeError, ValueError):
                             self.__failed_match_downloads.append(str(match_id))
-                            logging.warning(f"Can not read game details for game {match_id} for league {league_name}")
+                            logging.warning(f"Can not read game details for game {match_id} for league {league_name}")  # noqa: E501
                             continue
                     else:
                         self.__failed_match_downloads.append(str(match_id))
-                        logging.warning(f"Can not download game details for game {match_id} for league {league_name} ({r.status_code}: {r.reason})")
+                        logging.warning(f"Can not download game details for game {match_id} for league {league_name} ({r.status_code}: {r.reason})")  # noqa: E501
                         continue
 
                     self.__schedule.append((match_info['data'], league_name))
 
-        logging.info(f"Downloaded {len(self.__schedule)} game schedules from {len(self.__leagues)} leagues")
+        logging.info(f"Downloaded {len(self.__schedule)} game schedules from {len(self.__leagues)} leagues")  # noqa: E501
         return True
 
     def list_events(self):
@@ -409,8 +410,8 @@ class ScheduleHandler:
             matches = league['data']['matches']
             if matches is not None and not isinstance(matches, list):
                 raise TypeError()
-        
-        except:
+
+        except Exception:
             return False
 
         return True
@@ -422,17 +423,18 @@ class ScheduleHandler:
             conditions = [
                 match['matchId'] is not None,
                 isinstance(match['homeTeam'], dict),
-                    (match['homeTeam']['teamPermanentId'] is not None or
+                (
+                    match['homeTeam']['teamPermanentId'] is not None or
                     match['homeTeam']['seasonTeamId'] is not None)]
-            
+
             if not all(conditions):
                 raise TypeError()
 
-        except:
+        except Exception:
             return False
-        
+
         return True
-    
+
     def __validate_match_info(self, match_info):
         """Check if all relevant properties of the downloaded match info
         are present and readable"""
@@ -445,13 +447,13 @@ class ScheduleHandler:
                 match_info_data['ligaData']['verbandId'] is not None,
                 match_info_data['abgesagt'] is not None,
                 match_info_data['verzicht'] is not None]
-            
+
             if not all(conditions):
                 raise TypeError()
 
-        except:
+        except Exception:
             return False
-        
+
         return True
 
 
@@ -462,14 +464,14 @@ class WebCacheHandler():
                 self.__events = json.load(web_cache_file)
         except (FileNotFoundError, json.decoder.JSONDecodeError):
             self.__events = None
-    
+
     def list_events(self):
         if self.__events is not None:
             return [Event.from_json(e) for e in self.__events]
 
     def json_events(self):
         return self.__events
-    
+
     def store_events(self, events):
         with open(config.get('COMMON', 'web_cache_file'), 'w', encoding='utf8') as web_cache_file:
             json.dump([e.as_json() for e in events], web_cache_file, ensure_ascii=False)
@@ -485,14 +487,14 @@ def sync(source):
     calendar_hdl = CalendarHandler(config.get('CALENDAR', 'id'))
     if not calendar_hdl.connect():
         raise RuntimeError('Connection to the calendar failed.')
-    
+
     cache_hdl = WebCacheHandler(config.get('COMMON', 'web_cache_file'))
 
     if source == 'schedule':
         schedule_leagues = [
             config.getlist('SCHEDULE_LEAGUES', o)
             for o in config['SCHEDULE_LEAGUES'].keys()]
-        
+
         schedule_hdl = ScheduleHandler(schedule_leagues)
         if not schedule_hdl.connect():
             raise RuntimeError('DBB schedule download failed.')
@@ -528,16 +530,16 @@ def sync(source):
                 if src_ev not in update_events:
                     update_events.append(src_ev)
 
-        if src_ev not in all_events:    
+        if src_ev not in all_events:
             all_events.append(src_ev)
-    
+
     # determine which events to delete
     for cal_id, cal_ev in calendar_events.items():
         if cal_id not in source_events:
             # ignore events that are not part of a DBB schedule or where the download failed
             if source == 'schedule':
                 if cal_ev.schedule_info is None or source_hdl.failed(cal_ev):
-                    if cal_ev not in all_events:    
+                    if cal_ev not in all_events:
                         all_events.append(cal_ev)
 
                     continue
