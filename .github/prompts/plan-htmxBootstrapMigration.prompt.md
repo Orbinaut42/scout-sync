@@ -7,19 +7,21 @@ Migrate the current jQuery UI to server-rendered Jinja fragments, HTMX, and loca
 - Include: read-only event list, editor, manual event add/remove, scouter assignment, locked DBB events, password feedback, view refresh on browser focus, responsive layout, print output, and cache-save/sync enqueue.
 - Defer: statistics table and toggle, automatic scroll positioning, session/CSRF/rate-limit redesign, calendar-sync progress UI, and changes to the `Event`/sync domain model.
 
-### Phase 1 — Safe application and test foundations
+### Phase 1 — Safe application and test foundations ✅ Completed
 
-1. Refactor scheduler initialization in [scout_sync/app/app.py](scout_sync/app/app.py) and [scout_sync/app/__main__.py](scout_sync/app/__main__.py) so importing the Flask application does not start a background scheduler.
+1. ✅ Refactor scheduler initialization in [scout_sync/app/app.py](scout_sync/app/app.py) and [scout_sync/app/__main__.py](scout_sync/app/__main__.py) so importing the Flask application does not start a background scheduler.
    - Keep `app_startup()` and the [Procfile](Procfile) factory contract intact.
-   - Initialize the scheduler once at startup and route cache-sync enqueueing through a small mockable seam.
+   - Initialize the scheduler once at startup and enqueue cache syncs through the initialized scheduler.
    - This prevents test imports from starting threads or reaching Google/DBB services.
 
-2. Add `pytest` only as a development dependency in [pyproject.toml](pyproject.toml), with a lightweight developer installation entry point and pytest discovery configuration.
+2. ✅ Add `pytest` only as a development dependency in [pyproject.toml](pyproject.toml), with a lightweight developer installation entry point and pytest discovery configuration.
    - Do not add test dependencies to runtime [requirements.txt](requirements.txt).
 
-3. Add locally hosted, version-pinned HTMX JavaScript and Bootstrap CSS below the existing static directory.
+3. ✅ Add locally hosted, version-pinned HTMX JavaScript and Bootstrap CSS below the existing static directory.
    - Record source version and license information.
    - Use Bootstrap CSS only; do not introduce Bootstrap JavaScript, Bootstrap Icons, npm, or a bundler.
+
+Phase 1 validation completed with Python compilation, TOML/dependency checks, whitespace checks, and editor diagnostics. The vendored HTMX and Bootstrap assets were also recorded in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ### Phase 2 — Server-rendered template structure
 

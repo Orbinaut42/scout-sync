@@ -18,8 +18,12 @@ logging.getLogger('apscheduler').setLevel(logging.ERROR)
 sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.exception(
     exc_type.__name__, exc_info=(exc_type, exc_value, exc_traceback))
 
-scheduler = BackgroundScheduler(timzone=config.get('COMMON', 'timezone'))
-scheduler.start()
+_scheduler = None
+_app = Flask(
+    'scout_sync',
+    template_folder='app/web',
+    static_folder='app/web',
+    static_url_path='/list')
 
 
 def escape_json(j):
@@ -48,21 +52,14 @@ def unescape_json(j):
     return j
 
 
-app = Flask(
-    'scout_sync',
-    template_folder='app/web',
-    static_folder='app/web',
-    static_url_path='/list')
-
-
-@app.route('/')
+@_app.route('/')
 def root():
     """ping access point"""
 
     return ''
 
 
-@app.post('/list/edit')
+@_app.post('/list/edit')
 def edit():
     """POST access point for edits from webpage
 
@@ -94,12 +91,15 @@ def edit():
     WebCacheHandler(config.get('COMMON', 'web_cache_file')).store_events(event_list)
     logging.info('Events cache updated from webpage.')
 
-    scheduler.add_job(sync, kwargs={'source': 'cache'})
+    if _scheduler is None:
+        raise RuntimeError('The application scheduler has not been initialized.')
+
+    _scheduler.add_job(sync, kwargs={'source': 'cache'})
 
     return {}, 201
 
 
-@app.route('/list')
+@_app.route('/list')
 def _list():
     """GET access point for the current game list
     Returns a HTML document with the empty table"""
@@ -111,7 +111,7 @@ def _list():
         names=sorted(list(config['EMAILS'].keys())))
 
 
-@app.route('/list/events')
+@_app.route('/list/events')
 def events():
     """GET access point for the current table contents
     Returns the cached events in JSON format"""
@@ -132,25 +132,28 @@ def events():
     return events
 
 
-def start_sync_job():
-    """start a scheduler with the calendar syncronisation job
-    defined in the SYNC_JOB config section"""
-
-    if 'SYNC_JOB' not in config:
-        return
-
-    interval = config.getint('SYNC_JOB', 'interval')
-
-    scheduler.add_job(
-        sync,
-        'interval',
-        kwargs={'source': 'schedule'},
-        minutes=interval,
-        start_date=arrow.get().shift(seconds=10).datetime)
-
-
 def app_startup():
     """app factory method launch function"""
 
-    start_sync_job()
-    return app
+    global _scheduler
+    global _app
+
+    if _scheduler is None:
+        _scheduler = BackgroundScheduler(
+            timezone=config.get('COMMON', 'timezone'))
+        _scheduler.start()
+
+    if 'SYNC_JOB' in config:
+        interval = config.getint('SYNC_JOB', 'interval')
+
+        print(f'Scheduling sync job every {interval} minutes.')
+        _scheduler.add_job(
+            sync,
+            'interval',
+            kwargs={'source': 'schedule'},
+            minutes=interval,
+            start_date=arrow.get().shift(seconds=10).datetime,
+            id='schedule-sync',
+            replace_existing=True)
+
+    return _app
