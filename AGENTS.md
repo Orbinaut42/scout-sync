@@ -43,3 +43,4 @@
 - When changing event fields or serialization, review all `Event.from_*` and `Event.as_*` conversions plus calendar diffing in `sync()`.
 - For web changes, keep the existing jQuery-based table/edit flow and verify both `/list/events` JSON escaping and `/list/edit` validation/password handling.
 - Avoid broad refactors unless requested; this code integrates with remote APIs and relies on configuration-driven behavior.
+- When adding or updating docstrings, only describe what the function is currently doing, not why it was changed
