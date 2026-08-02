@@ -1,12 +1,21 @@
 # Scout Sync agent instructions
 
+## Application outline
+
+- The application has two main tasks: keeping game events in a calendar up to date with a online database ("DBB schedule") and allowing users ("scouters") to assign themselves or others to these games.
+- The calendar is synchronized periodically by the server with the online database.
+- The result of the calls to the online database API may be unreliable, so careful validation is neccessary to avoid incorrect deletion of events.
+- The UI displays the list of games and also allows editing and manually adding games
+- For games from the DBB schedule only assigning scouters is allowed, for manually created games all properties can be edited.
+- The edits from the UI are synced back to the calendar, the scouters are added as attendants in the calendar events.
+
 ## Project shape
 
-- This is a Python/Flask service that synchronizes DBB basketball schedules, Google Calendar events, and a JSON web cache.
 - The main synchronization orchestration and `Event` conversion model are in [scout_sync/sync/sync.py](scout_sync/sync/sync.py).
 - Google authentication and API wrappers are in [scout_sync/sync/google_api.py](scout_sync/sync/google_api.py).
 - Flask routes and the background scheduler are in [scout_sync/app/app.py](scout_sync/app/app.py); the browser UI is under [scout_sync/app/web](scout_sync/app/web).
 - Configuration loading is centralized in [scout_sync/config/__init__.py](scout_sync/config/__init__.py).
+
 
 ## Run and validate
 
