@@ -1,0 +1,34 @@
+<table id="eventTable">
+  <thead>
+    <tr>
+      <th id="dateTimeColumn">Datum</th>
+      <th id="locationColumn">Halle</th>
+      <th id="leagueColumn">Liga</th>
+      <th id="opponentColumn">Gegner</th>
+      <th id="scouterColumn">Scouter</th>
+    </tr>
+  </thead>
+  <tbody id="viewEventTable" class="viewOnly">
+    {% for event in events %}
+      {% set display_datetime = format_datetime(event.datetime) %}
+      <tr class="{{ 'past' if event.datetime and event.datetime < current_time else 'upcoming' }}">
+        <td class="viewDateTimeTd">{{ display_datetime.date }}{% if display_datetime.time %}<br>{{ display_datetime.time }}{% endif %}</td>
+        <td class="viewLocationTd">{{ event.location or '' }}</td>
+        <td class="viewLeagueTd">{{ event.league or '' }}</td>
+        <td class="viewOpponentTd">{{ event.opponent or '' }}</td>
+        <td class="viewScouterTd">
+          {% for scouter in event.scouters or [] %}
+            {{ scouter }}{% if not loop.last %}<br>{% endif %}
+          {% endfor %}
+        </td>
+      </tr>
+    {% endfor %}
+    <tr class="templateRow" hidden="true">
+      <td class="viewDateTimeTd"></td>
+      <td class="viewLocationTd"></td>
+      <td class="viewLeagueTd"></td>
+      <td class="viewOpponentTd"></td>
+      <td class="viewScouterTd"></td>
+    </tr>
+  </tbody>
+</table>

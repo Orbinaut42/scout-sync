@@ -26,6 +26,7 @@
 - Refresh OAuth credentials with `python -m scout_sync.sync --refresh-credentials`.
 - Production uses the command in [Procfile](Procfile).
 - There is currently no automated test suite, formatter, or CI configuration. For changes, at minimum compile-check modified Python files and manually exercise the affected CLI or Flask route when credentials/configuration permit.
+- Use flake8 for linting.
 
 ## Configuration and safety
 
@@ -43,4 +44,6 @@
 - When changing event fields or serialization, review all `Event.from_*` and `Event.as_*` conversions plus calendar diffing in `sync()`.
 - For web changes, keep the existing jQuery-based table/edit flow and verify both `/list/events` JSON escaping and `/list/edit` validation/password handling.
 - Avoid broad refactors unless requested; this code integrates with remote APIs and relies on configuration-driven behavior.
-- When adding or updating docstrings, only describe what the function is currently doing, not why it was changed
+- When adding or updating docstrings, only describe what the function is currently doing, not why it was changed.
+- Avoid creating helper functions that only wrap a few lines of code, if that helper is only called in one place.
+- Read configuration values directly from the shared `config` object; do not add helper functions that only return config values. A convenient config value object may be introduced later in [scout_sync/config/__init__.py](scout_sync/config/__init__.py).

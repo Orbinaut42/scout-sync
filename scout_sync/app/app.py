@@ -21,9 +21,46 @@ sys.excepthook = lambda exc_type, exc_value, exc_traceback: logging.exception(
 _scheduler = None
 _app = Flask(
     'scout_sync',
-    template_folder='app/web',
+    template_folder='app/templates',
     static_folder='app/web',
     static_url_path='/list')
+
+
+def format_datetime(value):
+    if value is None:
+        return {
+            'date': '',
+            'time': '',
+            'date_input': '',
+            'time_input': ''}
+
+    local_value = value.to(config.get('COMMON', 'timezone'))
+    has_time = local_value.hour or local_value.minute
+    return {
+        'date': local_value.format('ddd, DD.MM.YY', locale='de'),
+        'time': local_value.format('HH:mm') if has_time else '',
+        'date_input': local_value.format('YYYY-MM-DD'),
+        'time_input': local_value.format('HH:mm') if has_time else ''}
+
+
+def sorted_events(events):
+    return sorted(
+        events or [],
+        key=lambda event: (
+            event.datetime.timestamp()
+            if event.datetime is not None
+            else float('inf')))
+
+
+def template_context(events, feedback=None):
+    return {
+        'title': config.get('COMMON', 'title'),
+        'events': sorted_events(events),
+        'names': sorted(config['EMAILS'].keys()),
+        'timezone': config.get('COMMON', 'timezone'),
+        'current_time': arrow.now(config.get('COMMON', 'timezone')),
+        'format_datetime': format_datetime,
+        'feedback': feedback}
 
 
 def escape_json(j):
@@ -102,13 +139,19 @@ def edit():
 @_app.route('/list')
 def _list():
     """GET access point for the current game list
-    Returns a HTML document with the empty table"""
+    Returns a HTML document with the current events"""
 
     logging.info(f'List request from {request.access_route[0]}')
-    return render_template(
-        'list.html',
-        title=config.get('COMMON', 'title'),
-        names=sorted(list(config['EMAILS'].keys())))
+    cached_events = WebCacheHandler(config.get('COMMON', 'web_cache_file')).list_events()
+    feedback = (
+        {
+            'kind': 'empty-cache',
+            'id': 'emptyCacheMessage',
+            'message': 'Es sind noch keine Spieltermine verfügbar.'}
+        if cached_events is None
+        else None)
+
+    return render_template('list.html', **template_context(cached_events, feedback))
 
 
 @_app.route('/list/events')
@@ -136,7 +179,6 @@ def app_startup():
     """app factory method launch function"""
 
     global _scheduler
-    global _app
 
     if _scheduler is None:
         _scheduler = BackgroundScheduler(

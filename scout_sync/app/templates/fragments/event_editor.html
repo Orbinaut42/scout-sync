@@ -1,0 +1,52 @@
+<div id="editDiv">
+  <table id="editTable" class="editOnly">
+    <thead>
+      <tr>
+        <th id="editDateTimeColumn">Datum</th>
+        <th id="editLocationColumn">Halle</th>
+        <th id="editLeagueColumn">Liga</th>
+        <th id="editOpponentColumn">Gegner</th>
+        <th id="editScouterColumn">Scouter</th>
+        <th id="deleteButtonColumn"></th>
+      </tr>
+    </thead>
+    <tbody id="editEventTable">
+      {% for event in events %}
+        {% include "fragments/event_row.html" %}
+      {% endfor %}
+      <tr class="templateRow" hidden="true">
+        <td class="editDateTimeTd"><input type="date"><br><input type="time"></td>
+        <td class="editLocationTd"></td>
+        <td class="editLeagueTd"></td>
+        <td class="editOpponentTd"></td>
+        <td class="editScouterTd">
+          <select>
+            <option value=""></option>
+            {% for scouter in names %}
+              <option value="{{ scouter }}">{{ scouter }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td class="deleteButtonTd"><button type="button" class="deleteButton" aria-label="Spiel löschen" title="Spiel löschen"></button></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div id="addRowDiv" class="editOnly">
+    <button id="addRowButton" type="button" aria-label="Spiel hinzufügen" title="Spiel hinzufügen"></button>
+  </div>
+
+  <div id="submitDiv" class="editOnly">
+    <input id="pwInput" type="password" placeholder="Passwort">
+    <button id="submitEvents" type="button">Übernehmen</button>
+    <span id="submitResponse"></span>
+  </div>
+
+  <div id="sliderDiv">
+    <label class="switch">
+      <input type="checkbox" id="editToggle">
+      <span class="slider"></span>
+    </label>
+    <label for="editToggle">Bearbeiten</label>
+  </div>
+</div>

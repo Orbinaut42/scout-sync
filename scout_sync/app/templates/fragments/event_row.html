@@ -1,0 +1,39 @@
+{% set editable = not event.schedule_info %}
+{% set display_datetime = format_datetime(event.datetime) %}
+{% set event_scouters = event.scouters or [] %}
+{% set select_count = [3, event_scouters | length] | max %}
+<tr class="{{ 'locked' if not editable else '' }}" data-game-id="{{ event.id }}">
+  <td class="editDateTimeTd">
+    <input type="date"
+           value="{{ display_datetime.date_input }}"
+           {% if not editable %}disabled{% endif %}>
+    <br>
+    <input type="time"
+           value="{{ display_datetime.time_input }}"
+           {% if not editable %}disabled{% endif %}>
+  </td>
+  <td class="editLocationTd"
+      contenteditable="{{ 'true' if editable else 'false' }}">{{ event.location or '' }}</td>
+  <td class="editLeagueTd"
+      contenteditable="{{ 'true' if editable else 'false' }}">{{ event.league or '' }}</td>
+  <td class="editOpponentTd"
+      contenteditable="{{ 'true' if editable else 'false' }}">{{ event.opponent or '' }}</td>
+  <td class="editScouterTd">
+    {% for index in range(select_count) %}
+      {% set selected_scouter = event_scouters[index] if index < event_scouters | length else '' %}
+      <select>
+        <option value=""></option>
+        {% for scouter in names %}
+          <option value="{{ scouter }}"{% if scouter == selected_scouter %} selected{% endif %}>{{ scouter }}</option>
+        {% endfor %}
+      </select>{% if not loop.last %}<br>{% endif %}
+    {% endfor %}
+  </td>
+  <td class="deleteButtonTd">
+    <button type="button"
+            class="deleteButton"
+            aria-label="Spiel löschen"
+            title="Spiel löschen"
+            {% if not editable %}disabled{% endif %}></button>
+  </td>
+</tr>

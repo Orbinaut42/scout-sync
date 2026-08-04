@@ -1,6 +1,6 @@
 ## Plan: HTMX and Bootstrap Core Editor
 
-Migrate the current jQuery UI to server-rendered Jinja fragments, HTMX, and locally served Bootstrap CSS. Preserve Flask, cache persistence, sync behavior, and the current password-per-submit model—without adding Node, a database, sessions, or a client-side state framework.
+Migrate the current jQuery UI to server-rendered Jinja fragments, HTMX, and locally served Bootstrap CSS. Preserve Flask, cache persistence, sync behavior, and the current password-per-submit model. The migrated frontend is the only supported browser client; legacy JSON browser endpoints do not need to remain available. Do not add Node, a database, sessions, or a client-side state framework.
 
 **Confirmed scope**
 
@@ -25,19 +25,19 @@ Phase 1 validation completed with Python compilation, TOML/dependency checks, wh
 
 ### Phase 2 — Server-rendered template structure
 
-4. Separate Jinja templates from static files.
+4. ✅ Separate Jinja templates from static files.
    - Update the Flask template directory in [scout_sync/app/app.py](scout_sync/app/app.py).
    - Keep [scout_sync/app/web](scout_sync/app/web) as the static directory and preserve its `/list` URL prefix.
    - Move the current shell from [scout_sync/app/web/list.html](scout_sync/app/web/list.html) into a new server-template directory, preventing partial templates from being served as static files.
 
-5. Split the UI into reusable server-rendered fragments:
+5. ✅ Split the UI into reusable server-rendered fragments:
    - Page shell.
    - Read-only event table.
    - Editable event form/table.
    - Single editable event row.
    - Inline success, validation, password, empty-cache, and error messages.
 
-6. Add rendering helpers in [scout_sync/app/app.py](scout_sync/app/app.py) to provide:
+6. ✅ Add rendering helpers in [scout_sync/app/app.py](scout_sync/app/app.py) to provide:
    - Sorted cache events.
    - Configured scouter names.
    - Configured timezone/current time.
@@ -49,14 +49,14 @@ Phase 1 validation completed with Python compilation, TOML/dependency checks, wh
 7. Replace the jQuery page lifecycle with Bootstrap markup and HTMX attributes.
    - Use Bootstrap containers, responsive tables, forms, buttons, alerts, and visibility utilities.
    - Replace image-only buttons with accessible labelled controls.
-   - Remove references to jQuery and the legacy client script once equivalent behavior is covered.
+   - Remove references to jQuery and the old client script once equivalent behavior is covered.
 
-8. Add parallel HTML fragment routes while preserving legacy JSON routes:
+8. Add the HTML fragment routes used by the migrated frontend; do not add parallel legacy JSON routes:
    - `GET /list/hx/events` returns the read-only table fragment.
    - `GET /list/hx/edit` returns the populated editor form.
    - A small row-fragment route returns a new manual-event row with a collision-resistant server-generated ID.
    - `POST /list/hx/edit` handles normal HTML form submission.
-   - Preserve `GET /list/events` and JSON `POST /list/edit` unchanged for compatibility.
+   - Remove `GET /list/events` and JSON `POST /list/edit` after the HTMX routes cover their behavior; no compatibility shim is required.
 
 9. Render the initial event list on the server and use HTMX to refresh it when the browser regains focus.
    - Attach focus refresh only to the read-only view.
@@ -83,8 +83,7 @@ Phase 1 validation completed with Python compilation, TOML/dependency checks, wh
 13. Handle HTMX feedback without losing the form:
     - On success, store events, enqueue the existing `sync(source='cache')`, and replace the editor with the view plus a Bootstrap success alert.
     - On wrong password or invalid input, return a retargeted inline Bootstrap alert while keeping the submitted editor DOM intact.
-    - Keep the legacy JSON route’s existing `400`/`401` behavior unchanged.
-    - Keep `escape_json()` and `unescape_json()` only for the legacy JSON API; rely on Jinja autoescaping for HTML fragments.
+      - Rely on Jinja autoescaping for HTML fragments and standard form parsing; no legacy JSON compatibility layer is required.
 
 ### Phase 4 — Styling, cleanup, and documentation
 
@@ -98,6 +97,7 @@ Phase 1 validation completed with Python compilation, TOML/dependency checks, wh
 15. Remove unused assets only after confirming no template or stylesheet still references them.
     - Remove the jQuery script and [scout_sync/app/web/list.js](scout_sync/app/web/list.js).
     - Remove obsolete add/delete image assets if replaced by text-labelled Bootstrap buttons.
+      - Remove the old `/list/events` and `/list/edit` routes and their `escape_json()`/`unescape_json()` helpers after the HTMX routes are covered.
     - Keep the favicon and any asset still used.
 
 16. Update [AGENTS.md](AGENTS.md) after the migration to document:
@@ -105,7 +105,7 @@ Phase 1 validation completed with Python compilation, TOML/dependency checks, wh
     - Locally served frontend assets and no-build policy.
     - New fragment routes.
     - Pytest command.
-    - Legacy JSON compatibility and `schedule_info` preservation requirements.
+      - Removal of the old JSON browser API and `schedule_info` preservation requirements.
 
 ### Phase 5 — Verification
 
@@ -130,9 +130,10 @@ Phase 1 validation completed with Python compilation, TOML/dependency checks, wh
    - Exactly one cache-sync job is queued.
    - Wrong passwords and malformed rows show inline feedback without replacing unsaved fields.
 
-4. Regression-test legacy endpoints:
-   - `GET /list/events` continues to return the escaped event JSON schema.
-   - JSON `POST /list/edit` continues to return expected success, `400`, and `401` responses.
+4. Test the migrated HTML endpoints:
+   - `GET /list/hx/events` returns the read-only event fragment.
+   - `GET /list/hx/edit` and the row-fragment route return the expected editor markup.
+   - `POST /list/hx/edit` returns the expected success, validation, and password feedback without replacing the submitted form.
 
 5. Run:
    - `python -m pytest`
@@ -152,5 +153,6 @@ Phase 1 validation completed with Python compilation, TOML/dependency checks, wh
 
 - [scout_sync/sync/sync.py](scout_sync/sync/sync.py) remains the authoritative event conversion, cache, and calendar-diff layer.
 - The cache file location and existing configuration keys remain unchanged.
+- The migrated Jinja/HTMX frontend is the only supported frontend; old JSON browser endpoints do not require compatibility support.
 - No authentication redesign is included; the current password configuration remains in use.
 - Statistics and auto-scroll behavior are intentionally deferred to a later increment.
