@@ -60,6 +60,16 @@ body {
     min-width: 13rem;
 }
 
+#editorActions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1020;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    background-color: var(--bs-body-bg);
+    border-top: 1px solid var(--bs-border-color);
+}
+
 #editorFeedback:empty {
     display: none;
 }
@@ -69,12 +79,41 @@ body {
     #editTable {
         min-width: 36rem;
     }
+    #eventTable td,
+    #editTable td {
+        vertical-align: middle;
+    }
 }
 
 @media print {
+    #container {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
     #eventTable,
     #editTable {
         min-width: auto;
+        width: 100%;
+    }
+
+    #feedback,
+    #editorHeader,
+    #editorAddActions,
+    #editorActions,
+    #editorFeedback,
+    #editTable #deleteButtonColumn,
+    #editTable .deleteButtonTd,
+    #eventView .d-print-none {
+        display: none !important;
+    }
+
+    #editTable .form-control,
+    #editTable .form-select {
+        padding: 0;
+        color: inherit;
+        background-color: transparent;
+        border: 0;
     }
 
     #eventTable .past {

@@ -84,27 +84,29 @@ Phase 1 validation completed with Python compilation, TOML/dependency checks, wh
 
 Phase 3 validation completed with HTMX route smoke checks covering wrong-password feedback, malformed date/time feedback, successful cache persistence, success rendering, and exactly one cache-sync enqueue. Python compilation and whitespace checks also pass.
 
-### Phase 4 — Styling, cleanup, and documentation
+### Phase 4 — Styling, cleanup, and documentation ✅ Completed
 
-14. Replace the legacy custom styling in [scout_sync/app/web/style.css](scout_sync/app/web/style.css) with small Bootstrap supplements:
+14. ✅ Replace the legacy custom styling in [scout_sync/app/web/style.css](scout_sync/app/web/style.css) with small Bootstrap supplements:
     - Column constraints and compact table layout.
     - Past-event and locked-field styling.
     - Narrow-screen behavior.
     - Sticky editor controls where useful.
     - Print rules that hide editor controls and retain a readable event table.
 
-15. Remove unused assets only after confirming no template or stylesheet still references them.
+15. ✅ Remove unused assets only after confirming no template or stylesheet still references them.
     - Remove the jQuery script and [scout_sync/app/web/list.js](scout_sync/app/web/list.js).
     - Remove obsolete add/delete image assets if replaced by text-labelled Bootstrap buttons.
       - Remove the old `/list/events` and `/list/edit` routes and their `escape_json()`/`unescape_json()` helpers after the HTMX routes are covered.
     - Keep the favicon and any asset still used.
 
-16. Update [AGENTS.md](AGENTS.md) after the migration to document:
+16. ✅ Update [AGENTS.md](AGENTS.md) after the migration to document:
     - Jinja + HTMX + Bootstrap architecture.
     - Locally served frontend assets and no-build policy.
     - New fragment routes.
     - Pytest command.
       - Removal of the old JSON browser API.
+
+   Phase 4 validation completed with route and static-asset smoke checks, active-source reference checks, Python compilation, editor diagnostics, and whitespace validation. The migrated frontend now uses only server-rendered Jinja templates, HTMX, and locally served Bootstrap CSS.
 
 ### Phase 5 — Verification
 

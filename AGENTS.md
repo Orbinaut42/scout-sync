@@ -13,7 +13,8 @@
 
 - The main synchronization orchestration and `Event` conversion model are in [scout_sync/sync/sync.py](scout_sync/sync/sync.py).
 - Google authentication and API wrappers are in [scout_sync/sync/google_api.py](scout_sync/sync/google_api.py).
-- Flask routes and the background scheduler are in [scout_sync/app/app.py](scout_sync/app/app.py); the browser UI is under [scout_sync/app/web](scout_sync/app/web).
+- Flask routes and the background scheduler are in [scout_sync/app/app.py](scout_sync/app/app.py); server-rendered browser templates are under [scout_sync/app/templates](scout_sync/app/templates), with local static assets under [scout_sync/app/web](scout_sync/app/web).
+- The frontend uses Jinja fragments, HTMX, and locally served Bootstrap CSS. There is no Node, bundler, or frontend build step.
 - Configuration loading is centralized in [scout_sync/config/__init__.py](scout_sync/config/__init__.py).
 
 
@@ -25,7 +26,7 @@
 - Run a sync from the cached JSON events with `python -m scout_sync.sync --from cache`.
 - Refresh OAuth credentials with `python -m scout_sync.sync --refresh-credentials`.
 - Production uses the command in [Procfile](Procfile).
-- There is currently no automated test suite, formatter, or CI configuration. For changes, at minimum compile-check modified Python files and manually exercise the affected CLI or Flask route when credentials/configuration permit.
+- Run `python -m pytest` for the configured test suite. There is no formatter or CI configuration; for changes, at minimum compile-check modified Python files and manually exercise the affected CLI or Flask route when credentials/configuration permit.
 - Use flake8 for linting.
 
 ## Configuration and safety
@@ -42,7 +43,7 @@
 - Use the existing module-level logging style and explicit UTF-8 for JSON/file I/O.
 - Preserve timezone-aware `arrow` values and the configured timezone when creating or parsing events.
 - When changing event fields or serialization, review all `Event.from_*` and `Event.as_*` conversions plus calendar diffing in `sync()`.
-- For web changes, keep the existing jQuery-based table/edit flow and verify both `/list/events` JSON escaping and `/list/edit` validation/password handling.
+- For web changes, keep the Jinja + HTMX table/edit flow and Bootstrap markup. Verify `GET /list/hx/events`, `GET /list/hx/edit`, `GET /list/hx/edit/row`, and `POST /list/hx/edit` behavior, including validation and password feedback. The old `/list/events` and `/list/edit` JSON browser endpoints are removed.
 - Avoid broad refactors unless requested; this code integrates with remote APIs and relies on configuration-driven behavior.
 - When adding or updating docstrings, only describe what the function is currently doing, not why it was changed.
 - Avoid creating helper functions that only wrap a few lines of code, if that helper is only called in one place. If helper fuctions are needed, implement them in the most local context possible.
