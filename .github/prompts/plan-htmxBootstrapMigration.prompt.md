@@ -108,15 +108,15 @@ Phase 3 validation completed with HTMX route smoke checks covering wrong-passwor
 
    Phase 4 validation completed with route and static-asset smoke checks, active-source reference checks, Python compilation, editor diagnostics, and whitespace validation. The migrated frontend now uses only server-rendered Jinja templates, HTMX, and locally served Bootstrap CSS.
 
-### Phase 5 — Verification
+### Phase 5 — Verification ✅ Completed
 
-1. Add isolated pytest fixtures using:
+1. ✅ Add isolated pytest fixtures using:
    - A temporary cache file.
    - Test configuration values.
    - A fake scheduler/enqueue function.
    - No Google Calendar, DBB HTTP, or real scheduler startup.
 
-2. Test the full page and fragments:
+2. ✅ Test the full page and fragments:
    - Sorted German date display.
    - Escaped user content.
    - Scouter options.
@@ -124,22 +124,22 @@ Phase 3 validation completed with HTMX route smoke checks covering wrong-passwor
    - New manual row generation.
    - No statistics UI in this release.
 
-3. Test form submission:
+3. ✅ Test form submission:
    - Correct password writes only the temporary cache.
    - Exactly one cache-sync job is queued.
    - Wrong passwords and malformed rows show inline feedback without replacing unsaved fields.
 
-4. Test the migrated HTML endpoints:
+4. ✅ Test the migrated HTML endpoints:
    - `GET /list/hx/events` returns the read-only event fragment.
    - `GET /list/hx/edit` and the row-fragment route return the expected editor markup.
    - `POST /list/hx/edit` returns the expected success, validation, and password feedback without replacing the submitted form.
 
-5. Run:
+5. ✅ Run:
    - `python -m pytest`
    - `python -m compileall scout_sync`
    - `python -m flake8`
 
-6. Manually exercise `/list` with cached events and simulated sync enabled:
+6. ✅ Manually exercise `/list` with cached events and simulated sync enabled:
    - Desktop and mobile layout.
    - View → edit → cancel.
    - Add/remove a manual event.
@@ -147,6 +147,8 @@ Phase 3 validation completed with HTMX route smoke checks covering wrong-passwor
    - Invalid and valid password behavior.
    - Refresh-on-focus in view mode.
    - Printed read-only output.
+
+Phase 5 validation completed with 7 isolated pytest tests passing, including temporary-cache persistence, fake scheduler enqueueing, rendering, escaping, scouter filtering, DBB locking, row generation, endpoint behavior, and inline feedback. `python -m compileall scout_sync tests`, `python -m flake8`, editor diagnostics, and `git diff --check` pass. Browser checks on an isolated local server covered desktop/mobile layout, view/edit/cancel, manual row add/remove, wrong-password feedback, valid save feedback, view-only focus wiring, and print output without remote synchronization.
 
 **Key boundaries**
 
