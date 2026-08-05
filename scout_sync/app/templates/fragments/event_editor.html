@@ -1,52 +1,67 @@
-<div id="editDiv">
-  <table id="editTable" class="editOnly">
-    <thead>
-      <tr>
-        <th id="editDateTimeColumn">Datum</th>
-        <th id="editLocationColumn">Halle</th>
-        <th id="editLeagueColumn">Liga</th>
-        <th id="editOpponentColumn">Gegner</th>
-        <th id="editScouterColumn">Scouter</th>
-        <th id="deleteButtonColumn"></th>
-      </tr>
-    </thead>
-    <tbody id="editEventTable">
-      {% for event in events %}
-        {% include "fragments/event_row.html" %}
-      {% endfor %}
-      <tr class="templateRow" hidden="true">
-        <td class="editDateTimeTd"><input type="date"><br><input type="time"></td>
-        <td class="editLocationTd"></td>
-        <td class="editLeagueTd"></td>
-        <td class="editOpponentTd"></td>
-        <td class="editScouterTd">
-          <select>
-            <option value=""></option>
-            {% for scouter in names %}
-              <option value="{{ scouter }}">{{ scouter }}</option>
-            {% endfor %}
-          </select>
-        </td>
-        <td class="deleteButtonTd"><button type="button" class="deleteButton" aria-label="Spiel löschen" title="Spiel löschen"></button></td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div id="addRowDiv" class="editOnly">
-    <button id="addRowButton" type="button" aria-label="Spiel hinzufügen" title="Spiel hinzufügen"></button>
+<section id="eventEditor" aria-labelledby="eventEditorTitle">
+  <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+    <h1 id="eventEditorTitle" class="h2 mb-0">Spiele bearbeiten</h1>
+    <button type="button"
+            class="btn btn-outline-secondary"
+            hx-get="/list/hx/events"
+            hx-target="#content"
+            hx-swap="innerHTML">Abbrechen</button>
   </div>
 
-  <div id="submitDiv" class="editOnly">
-    <input id="pwInput" type="password" placeholder="Passwort">
-    <button id="submitEvents" type="button">Übernehmen</button>
-    <span id="submitResponse"></span>
-  </div>
+  <form id="eventForm"
+        method="post"
+        action="/list/hx/edit"
+        hx-post="/list/hx/edit"
+        hx-target="#content"
+        hx-swap="innerHTML">
+    <div class="table-responsive">
+      <table id="editTable" class="table table-sm table-striped align-middle">
+        <thead class="table-light">
+          <tr>
+            <th id="editDateTimeColumn" scope="col">Datum</th>
+            <th id="editLocationColumn" scope="col">Halle</th>
+            <th id="editLeagueColumn" scope="col">Liga</th>
+            <th id="editOpponentColumn" scope="col">Gegner</th>
+            <th id="editScouterColumn" scope="col">Scouter</th>
+            <th id="deleteButtonColumn" scope="col"><span class="visually-hidden">Aktionen</span></th>
+          </tr>
+        </thead>
+        <tbody id="editEventTable">
+          {% for event in events %}
+            {% include "fragments/event_row.html" %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
 
-  <div id="sliderDiv">
-    <label class="switch">
-      <input type="checkbox" id="editToggle">
-      <span class="slider"></span>
-    </label>
-    <label for="editToggle">Bearbeiten</label>
-  </div>
-</div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+      <button id="addRowButton"
+              type="button"
+              class="btn btn-outline-primary"
+              hx-get="/list/hx/edit/row"
+              hx-target="#editEventTable"
+              hx-swap="beforeend">Spiel hinzufügen</button>
+    </div>
+
+    <div id="editorActions" class="row g-2 align-items-end mt-3">
+      <div class="col-12 col-md-5 col-lg-4">
+        <label for="pwInput" class="form-label">Passwort</label>
+        <input id="pwInput"
+               name="password"
+               class="form-control"
+               type="password"
+               autocomplete="current-password"
+               required>
+      </div>
+      <div class="col-12 col-md-auto d-flex flex-wrap gap-2">
+        <button id="submitEvents" type="submit" class="btn btn-primary">Übernehmen</button>
+        <button type="button"
+                class="btn btn-outline-secondary"
+                hx-get="/list/hx/events"
+                hx-target="#content"
+                hx-swap="innerHTML">Abbrechen</button>
+      </div>
+    </div>
+    <div id="editorFeedback" class="mt-3" role="alert" aria-live="polite"></div>
+  </form>
+</section>

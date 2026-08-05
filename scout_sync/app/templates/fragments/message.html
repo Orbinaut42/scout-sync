@@ -6,7 +6,7 @@
     'empty-cache': 'warning',
     'error': 'danger'}[feedback.kind] | default('info', true) %}
   <div id="{{ feedback.id | default('feedback') }}"
-       class="feedback alert alert-{{ alert_kind }}"
+      class="feedback alert alert-{{ alert_kind }} mb-0"
        role="alert"
        aria-live="polite">{{ feedback.message }}</div>
 {% endif %}

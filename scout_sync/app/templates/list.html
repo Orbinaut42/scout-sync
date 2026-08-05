@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-  {% include "fragments/message.html" %}
-  {% include "fragments/event_table.html" %}
-  {% include "fragments/event_editor.html" %}
+  <div id="dashboard" class="container-fluid px-0">
+    <div id="feedback" class="mb-3" aria-live="polite">
+      {% include "fragments/message.html" %}
+    </div>
+    <div id="content">
+      {% include "fragments/event_table.html" %}
+    </div>
+  </div>
 {% endblock %}

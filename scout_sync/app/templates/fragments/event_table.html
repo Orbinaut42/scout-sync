@@ -1,34 +1,45 @@
-<table id="eventTable">
-  <thead>
-    <tr>
-      <th id="dateTimeColumn">Datum</th>
-      <th id="locationColumn">Halle</th>
-      <th id="leagueColumn">Liga</th>
-      <th id="opponentColumn">Gegner</th>
-      <th id="scouterColumn">Scouter</th>
-    </tr>
-  </thead>
-  <tbody id="viewEventTable" class="viewOnly">
-    {% for event in events %}
-      {% set display_datetime = format_datetime(event.datetime) %}
-      <tr class="{{ 'past' if event.datetime and event.datetime < current_time else 'upcoming' }}">
-        <td class="viewDateTimeTd">{{ display_datetime.date }}{% if display_datetime.time %}<br>{{ display_datetime.time }}{% endif %}</td>
-        <td class="viewLocationTd">{{ event.location or '' }}</td>
-        <td class="viewLeagueTd">{{ event.league or '' }}</td>
-        <td class="viewOpponentTd">{{ event.opponent or '' }}</td>
-        <td class="viewScouterTd">
-          {% for scouter in event.scouters or [] %}
-            {{ scouter }}{% if not loop.last %}<br>{% endif %}
-          {% endfor %}
-        </td>
-      </tr>
-    {% endfor %}
-    <tr class="templateRow" hidden="true">
-      <td class="viewDateTimeTd"></td>
-      <td class="viewLocationTd"></td>
-      <td class="viewLeagueTd"></td>
-      <td class="viewOpponentTd"></td>
-      <td class="viewScouterTd"></td>
-    </tr>
-  </tbody>
-</table>
+{% include "fragments/message.html" %}
+<section id="eventView"
+         aria-labelledby="eventViewTitle"
+         hx-get="/list/hx/events"
+         hx-trigger="focus from:window"
+         hx-target="#content"
+         hx-swap="innerHTML">
+  <h1 id="eventViewTitle" class="visually-hidden">{{ title }}</h1>
+  <div class="table-responsive">
+    <table id="eventTable" class="table table-sm table-striped table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th id="dateTimeColumn" scope="col">Datum</th>
+          <th id="locationColumn" scope="col">Halle</th>
+          <th id="leagueColumn" scope="col">Liga</th>
+          <th id="opponentColumn" scope="col">Gegner</th>
+          <th id="scouterColumn" scope="col">Scouter</th>
+        </tr>
+      </thead>
+      <tbody id="viewEventTable">
+        {% for event in events %}
+          {% set display_datetime = format_datetime(event.datetime) %}
+          <tr class="{{ 'past' if event.datetime and event.datetime < current_time else 'upcoming' }}">
+            <td class="viewDateTimeTd">{{ display_datetime.date }}{% if display_datetime.time %}<br>{{ display_datetime.time }}{% endif %}</td>
+            <td class="viewLocationTd">{{ event.location or '' }}</td>
+            <td class="viewLeagueTd">{{ event.league or '' }}</td>
+            <td class="viewOpponentTd">{{ event.opponent or '' }}</td>
+            <td class="viewScouterTd">
+              {% for scouter in event.scouters or [] %}
+                {{ scouter }}{% if not loop.last %}<br>{% endif %}
+              {% endfor %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="d-flex justify-content-end gap-2 mt-3 d-print-none">
+    <button type="button"
+            class="btn btn-primary"
+            hx-get="/list/hx/edit"
+            hx-target="#content"
+            hx-swap="innerHTML">Bearbeiten</button>
+  </div>
+</section>

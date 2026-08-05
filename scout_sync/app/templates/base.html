@@ -6,13 +6,12 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}"/>
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-5.3.3.min.css') }}"/>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
-    <script src="{{ url_for('static', filename='jquery-3.7.1.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='list.js') }}"></script>
+    <script src="{{ url_for('static', filename='htmx-2.0.4.min.js') }}" defer></script>
     <title>{{ title }}</title>
   </head>
   <body>
-    <div id="container">
+    <main id="container" class="container-fluid py-3">
       {% block content %}{% endblock %}
-    </div>
+    </main>
   </body>
 </html>

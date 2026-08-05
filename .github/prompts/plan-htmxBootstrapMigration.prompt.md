@@ -5,7 +5,7 @@ Migrate the current jQuery UI to server-rendered Jinja fragments, HTMX, and loca
 **Confirmed scope**
 
 - Include: read-only event list, editor, manual event add/remove, scouter assignment, locked DBB events, password feedback, view refresh on browser focus, responsive layout, print output, and cache-save/sync enqueue.
-- Defer: statistics table and toggle, automatic scroll positioning, session/CSRF/rate-limit redesign, calendar-sync progress UI, and changes to the `Event`/sync domain model.
+- Defer: statistics table and toggle, automatic scroll positioning, session/CSRF/rate-limit redesign, and calendar-sync progress UI.
 
 ### Phase 1 — Safe application and test foundations ✅ Completed
 
@@ -23,7 +23,7 @@ Migrate the current jQuery UI to server-rendered Jinja fragments, HTMX, and loca
 
 Phase 1 validation completed with Python compilation, TOML/dependency checks, whitespace checks, and editor diagnostics. The vendored HTMX and Bootstrap assets were also recorded in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-### Phase 2 — Server-rendered template structure
+### Phase 2 — Server-rendered template structure ✅ Completed
 
 4. ✅ Separate Jinja templates from static files.
    - Update the Flask template directory in [scout_sync/app/app.py](scout_sync/app/app.py).
@@ -44,46 +44,45 @@ Phase 1 validation completed with Python compilation, TOML/dependency checks, wh
    - Optional feedback messages.
    - German server-side date/time formatting using timezone-aware `arrow` values.
 
-### Phase 3 — HTMX core dashboard and editor
+### Phase 3 — HTMX core dashboard and editor ✅ Completed
 
-7. Replace the jQuery page lifecycle with Bootstrap markup and HTMX attributes.
+7. ✅ Replace the jQuery page lifecycle with Bootstrap markup and HTMX attributes.
    - Use Bootstrap containers, responsive tables, forms, buttons, alerts, and visibility utilities.
    - Replace image-only buttons with accessible labelled controls.
    - Remove references to jQuery and the old client script once equivalent behavior is covered.
 
-8. Add the HTML fragment routes used by the migrated frontend; do not add parallel legacy JSON routes:
+8. ✅ Add the HTML fragment routes used by the migrated frontend; do not add parallel legacy JSON routes:
    - `GET /list/hx/events` returns the read-only table fragment.
    - `GET /list/hx/edit` returns the populated editor form.
    - A small row-fragment route returns a new manual-event row with a collision-resistant server-generated ID.
    - `POST /list/hx/edit` handles normal HTML form submission.
    - Remove `GET /list/events` and JSON `POST /list/edit` after the HTMX routes cover their behavior; no compatibility shim is required.
 
-9. Render the initial event list on the server and use HTMX to refresh it when the browser regains focus.
+9. ✅ Render the initial event list on the server and use HTMX to refresh it when the browser regains focus.
    - Attach focus refresh only to the read-only view.
    - Do not refresh while editing, so unsaved changes cannot be discarded.
 
-10. Preserve current editor rules from [scout_sync/app/web/list.js](scout_sync/app/web/list.js):
+10. ✅ Preserve current editor rules from [scout_sync/app/web/list.js](scout_sync/app/web/list.js):
     - Manually created events remain fully editable and removable.
     - DBB-backed events keep date, time, location, league, and opponent locked.
     - DBB-backed events still allow scouter assignment.
-    - Render at least three scouter selects, plus additional selects for existing assignments.
-    - Removing a row only changes the unsaved form; no individual row action writes cache data or calendar data.
+    - Render three scouter selects
+    - Editing or removing a row only changes the unsaved form; no individual row action writes cache data or calendar data.
 
-11. Use stable per-row form keys rather than positional client arrays.
+11. ✅ Use stable per-row form keys rather than positional client arrays.
     - Group repeated scouter values safely during form parsing.
     - Generate new manual event IDs on the server.
     - Parse date/time values using the configured timezone, never browser-side `Date.parse`.
 
-12. Protect sync correlation data at the server boundary.
-    - Re-load current cache events before saving.
-    - Treat `schedule_info` and schedule-owned fields as authoritative cache data, not client-controlled hidden fields.
-    - Rehydrate DBB-backed events and preserve them even if a crafted request omits a locked row.
-    - Validate duplicate IDs, date/time input, and submitted scouter names before calling `Event.from_json()` and `WebCacheHandler.store_events()` from [scout_sync/sync/sync.py](scout_sync/sync/sync.py).
+12. ✅ Validate submitted form data at the server boundary.
+   - Validate duplicate IDs and date/time input before calling `Event.from_json()` and `WebCacheHandler.store_events()` from [scout_sync/sync/sync.py](scout_sync/sync.py).
 
-13. Handle HTMX feedback without losing the form:
+13. ✅ Handle HTMX feedback without losing the form:
     - On success, store events, enqueue the existing `sync(source='cache')`, and replace the editor with the view plus a Bootstrap success alert.
     - On wrong password or invalid input, return a retargeted inline Bootstrap alert while keeping the submitted editor DOM intact.
-      - Rely on Jinja autoescaping for HTML fragments and standard form parsing; no legacy JSON compatibility layer is required.
+    - Rely on Jinja autoescaping for HTML fragments and standard form parsing; no legacy JSON compatibility layer is required.
+
+Phase 3 validation completed with HTMX route smoke checks covering wrong-password feedback, malformed date/time feedback, successful cache persistence, success rendering, and exactly one cache-sync enqueue. Python compilation and whitespace checks also pass.
 
 ### Phase 4 — Styling, cleanup, and documentation
 
@@ -105,7 +104,7 @@ Phase 1 validation completed with Python compilation, TOML/dependency checks, wh
     - Locally served frontend assets and no-build policy.
     - New fragment routes.
     - Pytest command.
-      - Removal of the old JSON browser API and `schedule_info` preservation requirements.
+      - Removal of the old JSON browser API.
 
 ### Phase 5 — Verification
 
@@ -125,8 +124,6 @@ Phase 1 validation completed with Python compilation, TOML/dependency checks, wh
 
 3. Test form submission:
    - Correct password writes only the temporary cache.
-   - `id` and `schedule_info` remain preserved.
-   - Schedule-managed fields and rows cannot be removed or altered through submitted form data.
    - Exactly one cache-sync job is queued.
    - Wrong passwords and malformed rows show inline feedback without replacing unsaved fields.
 

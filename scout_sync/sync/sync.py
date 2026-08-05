@@ -120,13 +120,25 @@ class Event:
             datetime = arrow.get(event.get('datetime'), tzinfo=TIMEZONE)
         except Exception:
             datetime = arrow.get(2147483648, tzinfo=TIMEZONE)
+
+        scouter_list = []
+        for scouter_name in event.get('scouters') or []:
+            if not scouter_name:
+                continue
+            if scouter_name not in cls.__emails:
+                logging.warning(
+                    f"Unknown scouter name in event at {datetime}: "
+                    f"{scouter_name}")
+                continue
+            scouter_list.append(scouter_name)
+
         e = cls(
             id=str(event['id']),
             datetime=datetime,
             location=event.get('location') or None,
             league=event.get('league') or None,
             opponent=event.get('opponent') or None,
-            scouters=event.get('scouters') or [],
+            scouters=scouter_list,
             schedule_info=event.get('schedule_info'))
 
         return e

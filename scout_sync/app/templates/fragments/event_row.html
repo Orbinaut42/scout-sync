@@ -1,39 +1,78 @@
-{% set editable = not event.schedule_info %}
+{% set editable = event.schedule_info is none %}
 {% set display_datetime = format_datetime(event.datetime) %}
 {% set event_scouters = event.scouters or [] %}
 {% set select_count = [3, event_scouters | length] | max %}
 <tr class="{{ 'locked' if not editable else '' }}" data-game-id="{{ event.id }}">
   <td class="editDateTimeTd">
-    <input type="date"
-           value="{{ display_datetime.date_input }}"
-           {% if not editable %}disabled{% endif %}>
-    <br>
-    <input type="time"
-           value="{{ display_datetime.time_input }}"
-           {% if not editable %}disabled{% endif %}>
+    <input type="hidden" name="event_ids" value="{{ event.id }}">
+    {% if not editable %}
+      <input type="hidden"
+             name="events[{{ event.id }}][date]"
+             value="{{ display_datetime.date_input }}">
+      <input type="hidden"
+             name="events[{{ event.id }}][time]"
+             value="{{ display_datetime.time_input }}">
+    {% endif %}
+    <div class="d-flex flex-column gap-1">
+      <input class="form-control form-control-sm"
+             type="date"
+             name="events[{{ event.id }}][date]"
+             value="{{ display_datetime.date_input }}"
+             aria-label="Datum"
+             {% if not editable %}disabled{% endif %}>
+      <input class="form-control form-control-sm"
+             type="time"
+             name="events[{{ event.id }}][time]"
+             value="{{ display_datetime.time_input }}"
+             aria-label="Uhrzeit"
+             {% if not editable %}disabled{% endif %}>
+    </div>
   </td>
-  <td class="editLocationTd"
-      contenteditable="{{ 'true' if editable else 'false' }}">{{ event.location or '' }}</td>
-  <td class="editLeagueTd"
-      contenteditable="{{ 'true' if editable else 'false' }}">{{ event.league or '' }}</td>
-  <td class="editOpponentTd"
-      contenteditable="{{ 'true' if editable else 'false' }}">{{ event.opponent or '' }}</td>
+  <td class="editLocationTd">
+    <input class="form-control form-control-sm"
+           type="text"
+           name="events[{{ event.id }}][location]"
+           value="{{ event.location or '' }}"
+           aria-label="Halle"
+           {% if not editable %}readonly{% endif %}>
+  </td>
+  <td class="editLeagueTd">
+    <input class="form-control form-control-sm"
+           type="text"
+           name="events[{{ event.id }}][league]"
+           value="{{ event.league or '' }}"
+           aria-label="Liga"
+           {% if not editable %}readonly{% endif %}>
+  </td>
+  <td class="editOpponentTd">
+    <input class="form-control form-control-sm"
+           type="text"
+           name="events[{{ event.id }}][opponent]"
+           value="{{ event.opponent or '' }}"
+           aria-label="Gegner"
+           {% if not editable %}readonly{% endif %}>
+  </td>
   <td class="editScouterTd">
-    {% for index in range(select_count) %}
-      {% set selected_scouter = event_scouters[index] if index < event_scouters | length else '' %}
-      <select>
-        <option value=""></option>
-        {% for scouter in names %}
-          <option value="{{ scouter }}"{% if scouter == selected_scouter %} selected{% endif %}>{{ scouter }}</option>
-        {% endfor %}
-      </select>{% if not loop.last %}<br>{% endif %}
-    {% endfor %}
+    <div class="d-flex flex-column gap-1">
+      {% for index in range(select_count) %}
+        {% set selected_scouter = event_scouters[index] if index < event_scouters | length else '' %}
+        <select class="form-select form-select-sm"
+          name="events[{{ event.id }}][scouters]"
+          aria-label="Scouter {{ index + 1 }}">
+          <option value=""></option>
+          {% for scouter in names %}
+            <option value="{{ scouter }}"{% if scouter == selected_scouter %} selected{% endif %}>{{ scouter }}</option>
+          {% endfor %}
+        </select>
+      {% endfor %}
+    </div>
   </td>
   <td class="deleteButtonTd">
     <button type="button"
-            class="deleteButton"
+            class="deleteButton btn btn-outline-danger btn-sm"
             aria-label="Spiel löschen"
             title="Spiel löschen"
-            {% if not editable %}disabled{% endif %}></button>
+            hx-on:click="this.closest('tr').remove()"
+            {% if not editable %}disabled{% endif %}>Löschen</button>
   </td>
 </tr>

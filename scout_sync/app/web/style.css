@@ -2,275 +2,82 @@ body {
     font-family: Tahoma, sans-serif;
 }
 
-.editOnly {
+#eventTable,
+#editTable {
+    min-width: 42rem;
+}
+
+#eventTable th:nth-child(1),
+#editTable th:nth-child(1) {
+    width: 11rem;
+}
+
+#eventTable th:nth-child(2),
+#editTable th:nth-child(2) {
+    width: 14rem;
+}
+
+#eventTable th:nth-child(3),
+#editTable th:nth-child(3) {
+    width: 12rem;
+}
+
+#eventTable th:nth-child(5),
+#editTable th:nth-child(5) {
+    width: 13rem;
+}
+
+#editTable th:nth-child(6) {
+    width: 7rem;
+}
+
+#eventTable .viewOpponentTd,
+#eventTable .viewScouterTd,
+#editTable .editOpponentTd {
+    white-space: normal;
+}
+
+#eventTable .past {
+    color: var(--bs-secondary-color);
+}
+
+#editTable .locked input[disabled],
+#editTable .locked input[readonly] {
+    color: var(--bs-secondary-color);
+    background-color: var(--bs-tertiary-bg);
+}
+
+#editTable .form-control,
+#editTable .form-select {
+    min-width: 7rem;
+}
+
+#editTable .editDateTimeTd {
+    min-width: 11rem;
+}
+
+#editTable .editScouterTd {
+    min-width: 13rem;
+}
+
+#editorFeedback:empty {
     display: none;
 }
 
-table {
-    width: 100%;
-    table-layout: fixed;
-    border-spacing: 0px;
-}
-
-table, table select {
-    font-size: 2.2vw;
-}
-
-#dateTimeColumn {
-    width: 15%
-}
-
-#locationColumn {
-    width: 18%
-}
-
-#leagueColumn {
-    width: 15%
-}
-
-#scouterColumn {
-    width: 15%
-}
-
-.viewOpponentTd {
-    text-wrap: balance
-}
-
-.editOpponentTd {
-    text-wrap: stable
-}
-
-.statsTableColumn {
-    width: 20% 
-}
-
-#deleteButtonColumn {
-    width: 56px
-}
-
-thead {
-    position: sticky;
-    top: 0;
-    background: whitesmoke;
-}
-
-th, td {
-    padding-top: .25em;
-    padding-bottom: .25em;
-    padding-left: .25em;
-    padding-right: .5em;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    vertical-align: top;
-}
-
-.deleteButtonTd {
-    text-align: right;
-}
-
-.editLocationTd[contenteditable=false],
-.editLeagueTd[contenteditable=false],
-.editOpponentTd[contenteditable=false] {
-    color: dimgray;
-}
-
-th {
-    text-align: left;
-    border-bottom: solid;
-    border-top: solid;
-    background-color: whitesmoke;
-}
-
-tr:nth-child(even) {
-    background-color: whitesmoke;
-}
-
-tr:nth-child(odd) {
-    background-color: white;
-}
-
-.past {
-    color: dimgray;
-}
-
-#editDiv {
-    position: sticky;
-    bottom: 0;
-    width: 100%;
-    background-color: white;
-    border-top: 2px solid dimgray;
-}
-
-#editDiv div {
-    margin: .5em;
-}
-
-#submitDiv *, #editDiv label {
-    font-size: 3vw;
-    vertical-align: middle;
-}
-
-input, button, select, .switch {
-    background-color: white;
-    border: 2px solid dimgray;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-button:hover, input:enabled:hover, select:hover {
-    background-color: whitesmoke;
-}
-
-button {
-    border: 4px solid dimgray;
-    width: 2em;
-    height: 1.5em;
-    min-height: 40px;
-    text-align: center;
-    line-height: 1em;
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-}
-
-button:disabled {
-    display: none;
-}
-
-.deleteButton, #addRowButton {
-    color: dimgrey;
-    font-size: 25px;
-    font-weight: bold;
-}
-
-.deleteButton {
-    background-image: url(icon_delete.png);  
-}
-
-#addRowButton {
-    background-image: url(icon_add.png);  
-}
-
-#addRowDiv {
-    text-align: right;
-}
-
-#pwInput, #submitEvents {
-    width: 8em;
-}
-
-#sliderDiv .switch:not {
-    margin-right: 4em
-}
-
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 56px;
-    height: 16px;
-    margin: 8px;
-    border-radius: 4px;
-}
-  
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: darkgrey;
-    -webkit-transition: .4s;
-    transition: .4s;
-    cursor: pointer;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 32px;
-    width: 32px;
-    left: -8px;
-    bottom: -8px;
-    background-color: black;
-    -webkit-transition: .4s;
-    transition: .4s;
-    border-radius: 4px;
-}
-
-input:checked + .slider {
-    background-color: whitesmoke;
-}
-
-input:checked + .slider:before {
-    -webkit-transform: translateX(40px);
-    -ms-transform: translateX(40px);
-    transform: translateX(40px);
-}
-
-#sliderDiv .switch:not(:first-child) {
-    margin-left: 2em
-}
-
-@media only screen and (min-width: 1280px) {
-    #container {
-        width: min-content;
+@media (max-width: 575.98px) {
+    #eventTable,
+    #editTable {
+        min-width: 36rem;
     }
-    
-    table, table select {
-        font-size: initial;
-        width: initial;
-        table-layout: initial;
-    }
-
-    #submitDiv *, #editDiv label {
-        font-size: initial;
-    }
-
-    #viewEventTable td, #editEventTable td:not(:last-child) {
-        font-size: initial;
-        padding-right: 2em;
-    }
-
-    .viewOpponentTd {
-        text-wrap: nowrap
-    }
-
-    .switch {
-        scale: 0.7
-    }
-
-    button {
-        scale: 0.7
-    } 
 }
 
 @media print {
-    #editDiv, br {
-        display: none;
+    #eventTable,
+    #editTable {
+        min-width: auto;
     }
 
-    table, table select {
-        font-size: initial;
-        width: initial;
-        table-layout: initial;
-    }
-
-    .viewOpponentTd {
-        text-wrap: nowrap
-    }
-
-    .editOpponentTd {
-        text-wrap: nowrap
-    }
-
-    .past {
-        color: initial;
+    #eventTable .past {
+        color: inherit;
     }
 }
