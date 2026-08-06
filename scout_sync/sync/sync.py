@@ -116,11 +116,8 @@ class Event:
     @classmethod
     def from_json(cls, event):
         """create an event from a json object"""
-        try:
-            datetime = arrow.get(event.get('datetime'), tzinfo=TIMEZONE)
-        except Exception:
-            datetime = arrow.get(2147483648, tzinfo=TIMEZONE)
 
+        datetime = arrow.get(event.get('datetime'), tzinfo=TIMEZONE)
         scouter_list = []
         for scouter_name in event.get('scouters') or []:
             if not scouter_name:

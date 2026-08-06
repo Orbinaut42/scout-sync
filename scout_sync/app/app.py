@@ -27,7 +27,7 @@ _app = Flask(
     static_url_path='/list')
 
 
-def template_context(events, feedback=None):
+def template_context(events=None, feedback=None):
     def format_datetime(value):
         if value is None:
             return {
@@ -65,17 +65,8 @@ def _cached_events():
     return WebCacheHandler(config.get('COMMON', 'web_cache_file')).list_events()
 
 
-def editor_feedback(kind, message):
-    response = make_response(render_template(
-        'fragments/message.html',
-        feedback={'kind': kind, 'id': 'editorFeedbackMessage', 'message': message}))
-    response.headers['HX-Retarget'] = '#editorFeedback'
-    response.headers['HX-Reswap'] = 'innerHTML'
-    return response
-
-
 @_app.route('/')
-def root():
+def _root():
     """ping access point"""
 
     return ''
@@ -84,9 +75,17 @@ def root():
 @_app.route('/list')
 def _list():
     """GET access point for the current game list
-    Returns a HTML document with the current events"""
+    Returns a empty shell for the events"""
 
     logging.info(f'List request from {request.access_route[0]}')
+    return render_template('base.html', **template_context())
+
+
+@_app.get('/list/events')
+def _events():
+    """Return the read-only event table fragment."""
+
+    logging.info(f'Events fragment request from {request.access_route[0]}')
     cached_events = _cached_events()
     feedback = (
         {
@@ -95,22 +94,13 @@ def _list():
             'message': 'Es sind noch keine Spieltermine verfügbar.'}
         if cached_events is None
         else None)
-
-    return render_template('list.html', **template_context(cached_events, feedback))
-
-
-@_app.get('/list/hx/events')
-def hx_events():
-    """Return the read-only event table fragment."""
-
-    logging.info(f'Events fragment request from {request.access_route[0]}')
     return render_template(
         'fragments/event_table.html',
-        **template_context(_cached_events()))
+        **template_context(cached_events, feedback))
 
 
-@_app.get('/list/hx/edit')
-def hx_edit():
+@_app.get('/list/edit')
+def _edit():
     """Return the populated event editor fragment."""
 
     logging.info(f'Editor fragment request from {request.access_route[0]}')
@@ -119,8 +109,8 @@ def hx_edit():
         **template_context(_cached_events()))
 
 
-@_app.get('/list/hx/edit/row')
-def hx_edit_row():
+@_app.get('/list/edit/row')
+def _edit_row():
     """Return a new manual event row fragment."""
 
     logging.info(f'New event row request from {request.access_route[0]}')
@@ -131,11 +121,20 @@ def hx_edit_row():
         **template_context([]))
 
 
-@_app.post('/list/hx/edit')
-def hx_edit_submit():
+@_app.post('/list/edit')
+def _edit_submit():
     """Store events submitted by the HTML editor form."""
 
     logging.info(f'Edit request from {request.access_route[0]}')
+
+    def editor_feedback(kind, message):
+        response = make_response(render_template(
+            'fragments/message.html',
+            feedback={'kind': kind, 'id': 'editorFeedbackMessage', 'message': message}))
+        response.headers['HX-Retarget'] = '#editorFeedback'
+        response.headers['HX-Reswap'] = 'innerHTML'
+        return response
+
     event_field_pattern = re.compile(
         r'^events\[([^\]]+)\]\[(date|time|location|league|opponent|scouters)\]$')
 
@@ -176,15 +175,13 @@ def hx_edit_submit():
             for event_id, row in rows.items()]
     except Exception as e:
         logging.exception(e)
-        return editor_feedback('validation', 'Bitte prüfen Sie Ihre Eingaben.')
+        return editor_feedback('validation', 'Fehler beim Speichern der Spieltermine.')
 
     WebCacheHandler(config.get('COMMON', 'web_cache_file')).store_events(event_list)
     logging.info('Events cache updated from webpage.')
 
-    if _scheduler is None:
-        raise RuntimeError('The application scheduler has not been initialized.')
-
-    _scheduler.add_job(sync, kwargs={'source': 'cache'})
+    if _scheduler is not None:
+        _scheduler.add_job(sync, kwargs={'source': 'cache'})
 
     return render_template(
         'fragments/event_table.html',

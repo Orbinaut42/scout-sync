@@ -3,15 +3,15 @@
     <h1 id="eventEditorTitle" class="h2 mb-0">Spiele bearbeiten</h1>
     <button type="button"
             class="btn btn-outline-secondary"
-            hx-get="/list/hx/events"
+            hx-get="/list/events"
             hx-target="#content"
             hx-swap="innerHTML">Abbrechen</button>
   </div>
 
   <form id="eventForm"
         method="post"
-        action="/list/hx/edit"
-        hx-post="/list/hx/edit"
+        action="/list/edit"
+        hx-post="/list/edit"
         hx-target="#content"
         hx-swap="innerHTML">
     <div class="table-responsive">
@@ -38,7 +38,7 @@
       <button id="addRowButton"
               type="button"
               class="btn btn-outline-primary"
-              hx-get="/list/hx/edit/row"
+              hx-get="/list/edit/row"
               hx-target="#editEventTable"
               hx-swap="beforeend">Spiel hinzufügen</button>
     </div>
@@ -57,7 +57,7 @@
         <button id="submitEvents" type="submit" class="btn btn-primary">Übernehmen</button>
         <button type="button"
                 class="btn btn-outline-secondary"
-                hx-get="/list/hx/events"
+                hx-get="/list/events"
                 hx-target="#content"
                 hx-swap="innerHTML">Abbrechen</button>
       </div>

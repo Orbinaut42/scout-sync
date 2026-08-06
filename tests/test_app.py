@@ -37,15 +37,20 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     client = app_env['client']
 
     page = client.get('/list')
-    events_fragment = client.get('/list/hx/events')
-    editor = client.get('/list/hx/edit')
+    events_fragment = client.get('/list/events')
+    editor = client.get('/list/edit')
 
     assert page.status_code == 200
     page_body = page.get_data(as_text=True)
     assert 'bootstrap-5.3.3.min.css' in page_body
     assert 'htmx-2.0.4.min.js' in page_body
-    assert page_body.index('Early Hall') < page_body.index('&lt;b&gt;Late&lt;/b&gt;')
-    assert '<b>Late</b>' not in page_body
+    assert 'hx-get="/list/events"' in page_body
+    assert 'hx-trigger="load"' in page_body
+    assert 'Early Hall' not in page_body
+    assert 'Early Hall' in events_fragment.get_data(as_text=True)
+    assert '&lt;b&gt;Late&lt;/b&gt;' in events_fragment.get_data(as_text=True)
+    assert 'hx-trigger="focus from:window"' in events_fragment.get_data(as_text=True)
+    assert 'hx-trigger="focus from:window"' not in editor.get_data(as_text=True)
     assert '05.08.26' in events_fragment.get_data(as_text=True)
     assert '06.08.26' in events_fragment.get_data(as_text=True)
 
@@ -69,8 +74,8 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
 def test_new_manual_row_has_unique_server_id_and_three_scouters(app_env):
     client = app_env['client']
 
-    first = client.get('/list/hx/edit/row').get_data(as_text=True)
-    second = client.get('/list/hx/edit/row').get_data(as_text=True)
+    first = client.get('/list/edit/row').get_data(as_text=True)
+    second = client.get('/list/edit/row').get_data(as_text=True)
     first_id = re.search(r'data-game-id="(manual-[0-9a-f]{32})"', first).group(1)
     second_id = re.search(r'data-game-id="(manual-[0-9a-f]{32})"', second).group(1)
 
@@ -95,7 +100,7 @@ def submit_data(password='secret', date='2026-08-10'):
 
 
 def test_submit_persists_cache_filters_scouters_and_enqueues_once(app_env):
-    response = app_env['client'].post('/list/hx/edit', data=submit_data())
+    response = app_env['client'].post('/list/edit', data=submit_data())
 
     saved = json.loads(app_env['cache_file'].read_text(encoding='utf8'))
     assert response.status_code == 200
@@ -113,7 +118,7 @@ def test_wrong_password_keeps_editor_target_and_does_not_write(app_env):
     app_env['cache_file'].write_text(original_cache, encoding='utf8')
 
     response = app_env['client'].post(
-        '/list/hx/edit',
+        '/list/edit',
         data=submit_data(password='wrong'))
 
     assert response.status_code == 200
@@ -129,7 +134,7 @@ def test_invalid_date_keeps_editor_target_and_does_not_write(app_env):
     app_env['cache_file'].write_text(original_cache, encoding='utf8')
 
     response = app_env['client'].post(
-        '/list/hx/edit',
+        '/list/edit',
         data=submit_data(date='not-a-date'))
 
     assert response.status_code == 200
@@ -142,7 +147,7 @@ def test_invalid_date_keeps_editor_target_and_does_not_write(app_env):
 
 def test_duplicate_event_ids_return_validation_feedback(app_env):
     response = app_env['client'].post(
-        '/list/hx/edit',
+        '/list/edit',
         data=MultiDict([
             ('password', 'secret'),
             ('event_ids', 'duplicate'),
@@ -156,11 +161,11 @@ def test_duplicate_event_ids_return_validation_feedback(app_env):
     assert app_env['scheduler'].jobs == []
 
 
-def test_migrated_routes_exist_and_legacy_json_routes_do_not(app_env):
+def test_migrated_routes_exist_and_hx_routes_do_not(app_env):
     client = app_env['client']
 
-    for path in ('/list/hx/events', '/list/hx/edit', '/list/hx/edit/row'):
+    for path in ('/list/events', '/list/edit', '/list/edit/row'):
         assert client.get(path).status_code == 200
-    assert client.post('/list/hx/edit', data={'password': 'wrong'}).status_code == 200
-    assert client.get('/list/events').status_code == 404
-    assert client.post('/list/edit').status_code in (404, 405)
+    assert client.post('/list/edit', data={'password': 'wrong'}).status_code == 200
+    assert client.get('/list/hx/events').status_code == 404
+    assert client.post('/list/hx/edit').status_code in (404, 405)

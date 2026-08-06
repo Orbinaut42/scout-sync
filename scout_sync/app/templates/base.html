@@ -11,7 +11,17 @@
   </head>
   <body>
     <main id="container" class="container-fluid py-3">
-      {% block content %}{% endblock %}
+        <div id="dashboard" class="container-fluid px-0">
+          <div id="feedback" class="mb-3" aria-live="polite">
+            {% include "fragments/message.html" %}
+          </div>
+          <div id="content"
+              hx-get="/list/events"
+              hx-trigger="load"
+              hx-target="#content"
+              hx-swap="innerHTML">
+          </div>
+        </div>
     </main>
   </body>
 </html>

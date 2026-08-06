@@ -1,7 +1,7 @@
 {% include "fragments/message.html" %}
 <section id="eventView"
          aria-labelledby="eventViewTitle"
-         hx-get="/list/hx/events"
+         hx-get="/list/events"
          hx-trigger="focus from:window"
          hx-target="#content"
          hx-swap="innerHTML">
@@ -38,7 +38,7 @@
   <div class="d-flex justify-content-end gap-2 mt-3 d-print-none">
     <button type="button"
             class="btn btn-primary"
-            hx-get="/list/hx/edit"
+            hx-get="/list/edit"
             hx-target="#content"
             hx-swap="innerHTML">Bearbeiten</button>
   </div>
