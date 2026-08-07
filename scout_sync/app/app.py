@@ -90,7 +90,6 @@ def _events():
     feedback = (
         {
             'kind': 'empty-cache',
-            'id': 'emptyCacheMessage',
             'message': 'Es sind noch keine Spieltermine verfügbar.'}
         if cached_events is None
         else None)
@@ -129,10 +128,10 @@ def _edit_submit():
 
     def editor_feedback(kind, message):
         response = make_response(render_template(
-            'fragments/message.html',
-            feedback={'kind': kind, 'id': 'editorFeedbackMessage', 'message': message}))
-        response.headers['HX-Retarget'] = '#editorFeedback'
-        response.headers['HX-Reswap'] = 'innerHTML'
+            'fragments/toast.html',
+            feedback={'kind': kind, 'message': message}))
+        response.headers['HX-Retarget'] = '#toastContainer'
+        response.headers['HX-Reswap'] = 'outerHTML'
         return response
 
     event_field_pattern = re.compile(
@@ -189,7 +188,6 @@ def _edit_submit():
             event_list,
             {
                 'kind': 'success',
-                'id': 'saveFeedback',
                 'message': 'Die Spieltermine wurden gespeichert.'}))
 
 

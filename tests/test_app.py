@@ -49,15 +49,27 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     assert 'Early Hall' not in page_body
     assert 'Early Hall' in events_fragment.get_data(as_text=True)
     assert '&lt;b&gt;Late&lt;/b&gt;' in events_fragment.get_data(as_text=True)
+    assert 'table-hover' not in events_fragment.get_data(as_text=True)
+    assert (
+        "this.querySelector('.upcoming')?.scrollIntoView({ block: 'start' })"
+        in events_fragment.get_data(as_text=True))
     assert 'hx-trigger="focus from:window"' in events_fragment.get_data(as_text=True)
     assert 'hx-trigger="focus from:window"' not in editor.get_data(as_text=True)
+    assert 'id="editorFeedback"' not in page_body
+    assert 'id="editorFeedback"' not in editor.get_data(as_text=True)
+    assert 'id="toastContainer"' not in page_body
+    assert events_fragment.get_data(as_text=True).count('id="toastContainer"') == 1
+    editor_body = editor.get_data(as_text=True)
+    assert editor_body.count('id="toastContainer"') == 1
+    assert 'class="toast show' not in editor_body
     assert '05.08.26' in events_fragment.get_data(as_text=True)
     assert '06.08.26' in events_fragment.get_data(as_text=True)
 
-    editor_body = editor.get_data(as_text=True)
     assert editor.status_code == 200
     assert 'value="Alice"' in editor_body
     assert 'value="Bob"' in editor_body
+    assert 'hx-on::after-swap=' in editor_body
+    assert "this.lastElementChild?.scrollIntoView({ block: 'nearest' })" in editor_body
     assert 'statistics' not in editor_body.lower()
     assert 'statistik' not in editor_body.lower()
 
@@ -69,6 +81,18 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     assert 'readonly' in dbb_row
     assert manual_row.count('name="events[manual-late][scouters]"') == 3
     assert dbb_row.count('name="events[dbb-early][scouters]"') == 3
+
+
+def test_empty_cache_feedback_targets_footer(app_env):
+    response = app_env['client'].get('/list/events')
+    body = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert '<div id="toastContainer"' in body
+    assert 'Es sind noch keine Spieltermine verfügbar.' in body
+    assert '<section id="eventView"' in body
+    assert 'class="toast show text-bg-warning"' in body
+    assert 'setTimeout(() => this.remove(), 5000)' in body
 
 
 def test_new_manual_row_has_unique_server_id_and_three_scouters(app_env):
@@ -103,9 +127,12 @@ def test_submit_persists_cache_filters_scouters_and_enqueues_once(app_env):
     response = app_env['client'].post('/list/edit', data=submit_data())
 
     saved = json.loads(app_env['cache_file'].read_text(encoding='utf8'))
+    body = response.get_data(as_text=True)
     assert response.status_code == 200
-    assert 'eventView' in response.get_data(as_text=True)
-    assert 'gespeichert' in response.get_data(as_text=True)
+    assert 'eventView' in body
+    assert 'gespeichert' in body
+    assert 'id="toastContainer"' in body
+    assert 'class="toast show text-bg-success"' in body
     assert saved[0]['id'] == 'manual-submit'
     assert saved[0]['scouters'] == ['Alice']
     assert len(app_env['scheduler'].jobs) == 1
@@ -113,7 +140,7 @@ def test_submit_persists_cache_filters_scouters_and_enqueues_once(app_env):
     assert app_env['scheduler'].jobs[0][1] == {'kwargs': {'source': 'cache'}}
 
 
-def test_wrong_password_keeps_editor_target_and_does_not_write(app_env):
+def test_wrong_password_keeps_feedback_target_and_does_not_write(app_env):
     original_cache = '[]'
     app_env['cache_file'].write_text(original_cache, encoding='utf8')
 
@@ -122,14 +149,15 @@ def test_wrong_password_keeps_editor_target_and_does_not_write(app_env):
         data=submit_data(password='wrong'))
 
     assert response.status_code == 200
-    assert response.headers['HX-Retarget'] == '#editorFeedback'
-    assert response.headers['HX-Reswap'] == 'innerHTML'
+    assert response.headers['HX-Retarget'] == '#toastContainer'
+    assert response.headers['HX-Reswap'] == 'outerHTML'
     assert 'Passwort' in response.get_data(as_text=True)
+    assert response.get_data(as_text=True).count('id="toastContainer"') == 1
     assert app_env['cache_file'].read_text(encoding='utf8') == original_cache
     assert app_env['scheduler'].jobs == []
 
 
-def test_invalid_date_keeps_editor_target_and_does_not_write(app_env):
+def test_invalid_date_keeps_feedback_target_and_does_not_write(app_env):
     original_cache = '[]'
     app_env['cache_file'].write_text(original_cache, encoding='utf8')
 
@@ -138,9 +166,10 @@ def test_invalid_date_keeps_editor_target_and_does_not_write(app_env):
         data=submit_data(date='not-a-date'))
 
     assert response.status_code == 200
-    assert response.headers['HX-Retarget'] == '#editorFeedback'
-    assert response.headers['HX-Reswap'] == 'innerHTML'
-    assert 'Eingaben' in response.get_data(as_text=True)
+    assert response.headers['HX-Retarget'] == '#toastContainer'
+    assert response.headers['HX-Reswap'] == 'outerHTML'
+    assert 'Fehler beim Speichern' in response.get_data(as_text=True)
+    assert response.get_data(as_text=True).count('id="toastContainer"') == 1
     assert app_env['cache_file'].read_text(encoding='utf8') == original_cache
     assert app_env['scheduler'].jobs == []
 
@@ -156,8 +185,8 @@ def test_duplicate_event_ids_return_validation_feedback(app_env):
             ('events[duplicate][time]', '19:30')]))
 
     assert response.status_code == 200
-    assert response.headers['HX-Retarget'] == '#editorFeedback'
-    assert 'Eingaben' in response.get_data(as_text=True)
+    assert response.headers['HX-Retarget'] == '#toastContainer'
+    assert 'Fehler beim Speichern' in response.get_data(as_text=True)
     assert app_env['scheduler'].jobs == []
 
 

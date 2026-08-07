@@ -7,28 +7,50 @@ body {
     min-width: 42rem;
 }
 
+.table-responsive {
+    max-height: calc(100vh - 2rem);
+}
+
+#eventTable thead,
+#editTable thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: var(--bs-tertiary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+#eventTable tbody tr {
+    height: 3.5rem;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+#eventTable tbody tr.upcoming {
+    scroll-margin-top: 7rem;
+}
+
 #eventTable th:nth-child(1),
-#editTable th:nth-child(1) {
-    width: 11rem;
-}
-
+#editTable th:nth-child(1),
 #eventTable th:nth-child(2),
-#editTable th:nth-child(2) {
-    width: 14rem;
-}
-
+#editTable th:nth-child(2),
 #eventTable th:nth-child(3),
 #editTable th:nth-child(3) {
-    width: 12rem;
+    width: 8rem;
+}
+
+#eventTable th:nth-child(4),
+#editTable th:nth-child(4) {
+    min-width: 12rem;
 }
 
 #eventTable th:nth-child(5),
 #editTable th:nth-child(5) {
-    width: 13rem;
+    width: 12rem;
 }
 
 #editTable th:nth-child(6) {
-    width: 7rem;
+    width: 2rem;
 }
 
 #eventTable .viewOpponentTd,
@@ -39,6 +61,7 @@ body {
 
 #eventTable .past {
     color: var(--bs-secondary-color);
+    opacity: 0.6;
 }
 
 #editTable .locked input[disabled],
@@ -47,43 +70,63 @@ body {
     background-color: var(--bs-tertiary-bg);
 }
 
-#editTable .form-control,
-#editTable .form-select {
-    min-width: 7rem;
-}
-
-#editTable .editDateTimeTd {
-    min-width: 11rem;
-}
-
-#editTable .editScouterTd {
-    min-width: 13rem;
-}
-
-#editorActions {
-    position: sticky;
+#appFooter {
+    position: absolute;
+    width: 100%;
     bottom: 0;
     z-index: 1020;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
     background-color: var(--bs-body-bg);
     border-top: 1px solid var(--bs-border-color);
 }
 
-#editorFeedback:empty {
+#toastContainer {
+    z-index: 1090;
+}
+
+#toastContainer:not(:has(.toast)) {
     display: none;
 }
 
-@media (max-width: 575.98px) {
-    #eventTable,
-    #editTable {
-        min-width: 36rem;
-    }
-    #eventTable td,
-    #editTable td {
-        vertical-align: middle;
-    }
+#toastContainer .toast {
+    min-width: min(22rem, calc(100vw - 2rem));
 }
+
+#footerActions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#editorActions {
+    display: none !important;
+}
+
+body:has(#eventEditor) #editorActions {
+    display: flex !important;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#addRowButton,
+#editTable .deleteButton {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#addRowButton {
+    margin-left: auto;
+}
+
+@media only screen and (min-width: 1280px) {
+    .table-responsive {
+        width: max-content;
+    }
+} 
 
 @media print {
     #container {
@@ -97,11 +140,8 @@ body {
         width: 100%;
     }
 
-    #feedback,
-    #editorHeader,
-    #editorAddActions,
-    #editorActions,
-    #editorFeedback,
+    #toastContainer,
+    #appFooter,
     #editTable #deleteButtonColumn,
     #editTable .deleteButtonTd,
     #eventView .d-print-none {

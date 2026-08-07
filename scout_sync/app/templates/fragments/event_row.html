@@ -68,11 +68,12 @@
     </div>
   </td>
   <td class="deleteButtonTd">
-    <button type="button"
-            class="deleteButton btn btn-outline-danger btn-sm"
-            aria-label="Spiel löschen"
-            title="Spiel löschen"
-            hx-on:click="this.closest('tr').remove()"
-            {% if not editable %}disabled{% endif %}>Löschen</button>
+    {% if editable %}
+      <button type="button"
+              class="deleteButton btn btn-outline-danger btn-sm"
+              aria-label="Spiel löschen"
+              title="Spiel löschen"
+              hx-on:click="this.closest('tr').remove()">&times;</button>
+    {% endif %}
   </td>
 </tr>

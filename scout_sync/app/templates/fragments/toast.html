@@ -1,0 +1,26 @@
+<div id="toastContainer"
+     class="toast-container position-fixed top-0 end-0 p-3"
+     aria-live="polite"
+     aria-atomic="true">
+  {% if feedback %}
+    {% set alert_kind = {
+      'success': 'success',
+      'validation': 'warning',
+      'password': 'danger',
+      'empty-cache': 'warning',
+      'error': 'danger'}[feedback.kind] | default('info', true) %}
+    <div class="toast show text-bg-{{ alert_kind }}"
+         role="alert"
+         aria-live="assertive"
+         aria-atomic="true"
+         hx-on::load="setTimeout(() => this.remove(), 5000)">
+      <div class="d-flex">
+        <div class="toast-body">{{ feedback.message }}</div>
+        <button type="button"
+                class="btn-close{% if alert_kind not in ('warning', 'light') %} btn-close-white{% endif %} me-2 m-auto"
+                aria-label="Schließen"
+                hx-on:click="this.closest('.toast').remove()"></button>
+      </div>
+    </div>
+  {% endif %}
+</div>

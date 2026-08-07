@@ -9,19 +9,59 @@
     <script src="{{ url_for('static', filename='htmx-2.0.4.min.js') }}" defer></script>
     <title>{{ title }}</title>
   </head>
-  <body>
-    <main id="container" class="container-fluid py-3">
+  <body class="d-flex flex-column min-vh-100">
+    <main id="container" class="container-fluid flex-grow-1 py-3">
         <div id="dashboard" class="container-fluid px-0">
-          <div id="feedback" class="mb-3" aria-live="polite">
-            {% include "fragments/message.html" %}
-          </div>
           <div id="content"
               hx-get="/list/events"
               hx-trigger="load"
               hx-target="#content"
-              hx-swap="innerHTML">
+              hx-swap="innerHTML"
+              hx-on::after-swap="document.getElementById('editModeToggle').checked = this.querySelector('#eventEditor') !== null">
           </div>
         </div>
     </main>
+    <footer id="appFooter" class="d-print-none">
+      <div class="container-fluid px-3 py-2">
+        <div id="footerActions">
+          <div id="viewActions" class="d-flex align-items-center">
+            <div class="form-check form-switch mb-0">
+              <input id="editModeToggle"
+                     class="form-check-input"
+                     type="checkbox"
+                     role="switch"
+                     hx-on:change="htmx.ajax('GET', this.checked ? '/list/edit' : '/list/events', {target: '#content', swap: 'innerHTML'})">
+              <label class="form-check-label" for="editModeToggle">Bearbeiten</label>
+            </div>
+          </div>
+          <div id="editorActions" class="d-flex flex-wrap align-items-center gap-2">
+            <div>
+              <label for="pwInput" class="visually-hidden">Passwort</label>
+              <input id="pwInput"
+                     name="password"
+                     form="eventForm"
+                     class="form-control form-control-sm"
+                     type="password"
+                     autocomplete="current-password"
+                     placeholder="Passwort"
+                     aria-label="Passwort"
+                     required>
+            </div>
+            <button id="submitEvents"
+                    form="eventForm"
+                    type="submit"
+                    class="btn btn-primary btn-sm">Übernehmen</button>
+            <button id="addRowButton"
+              type="button"
+              class="btn btn-outline-primary btn-sm"
+              aria-label="Spiel hinzufügen"
+              title="Spiel hinzufügen"
+              hx-get="/list/edit/row"
+              hx-target="#editEventTable"
+              hx-swap="beforeend">+</button>
+          </div>
+        </div>
+      </div>
+    </footer>
   </body>
 </html>
