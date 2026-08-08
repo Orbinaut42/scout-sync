@@ -9,8 +9,8 @@
     <script src="{{ url_for('static', filename='htmx-2.0.4.min.js') }}" defer></script>
     <title>{{ title }}</title>
   </head>
-  <body class="d-flex flex-column min-vh-100">
-    <main id="container" class="container-fluid flex-grow-1 py-3">
+  <body class="d-flex flex-column min-vh-100 overflow-y-hidden">
+    <main id="container" class="container-lg flex-grow-1">
         <div id="dashboard" class="container-fluid px-0">
           <div id="content"
               hx-get="/list/events"
@@ -21,8 +21,8 @@
           </div>
         </div>
     </main>
-    <footer id="appFooter" class="d-print-none">
-      <div class="container-fluid px-3 py-2">
+    <footer id="appFooter" class="container-lg flex-grow-1 d-print-none">
+      <div class="container-fluid px-0 py-2">
         <div id="footerActions">
           <div id="viewActions" class="d-flex align-items-center">
             <div class="form-check form-switch mb-0">
@@ -31,7 +31,17 @@
                      type="checkbox"
                      role="switch"
                      hx-on:change="htmx.ajax('GET', this.checked ? '/list/edit' : '/list/events', {target: '#content', swap: 'innerHTML'})">
-              <label class="form-check-label" for="editModeToggle">Bearbeiten</label>
+              <label class="form-check-label"
+                     for="editModeToggle"
+                     title="Bearbeiten">
+                <svg class="footerIcon"
+                     viewBox="0 0 16 16"
+                     aria-hidden="true"
+                     focusable="false">
+                  <path d="M12.854.146a.5.5 0 0 0-.708 0l-10 10A.5.5 0 0 0 2 10.5V14a.5.5 0 0 0 .5.5H6a.5.5 0 0 0 .354-.146l10-10a.5.5 0 0 0 0-.708zM11.207 2.5 13.5 4.793 14.293 4 12 1.707zM12.5 5.5 10.207 3.207 3 10.414V13h2.586z"/>
+                </svg>
+                <span class="visually-hidden">Bearbeiten</span>
+              </label>
             </div>
           </div>
           <div id="editorActions" class="d-flex flex-wrap align-items-center gap-2">
@@ -50,7 +60,16 @@
             <button id="submitEvents"
                     form="eventForm"
                     type="submit"
-                    class="btn btn-primary btn-sm">Übernehmen</button>
+                    class="btn btn-outline-primary btn-sm"
+                    aria-label="Übernehmen"
+                    title="Übernehmen">
+              <svg class="footerIcon"
+                   viewBox="0 0 16 16"
+                   aria-hidden="true"
+                   focusable="false">
+                <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+              </svg>
+            </button>
             <button id="addRowButton"
               type="button"
               class="btn btn-outline-primary btn-sm"

@@ -28,21 +28,21 @@
              {% if not editable %}disabled{% endif %}>
     </div>
   </td>
-  <td class="editLocationTd">
-    <input class="form-control form-control-sm"
-           type="text"
-           name="events[{{ event.id }}][location]"
-           value="{{ event.location or '' }}"
-           aria-label="Halle"
-           {% if not editable %}readonly{% endif %}>
-  </td>
-  <td class="editLeagueTd">
-    <input class="form-control form-control-sm"
-           type="text"
-           name="events[{{ event.id }}][league]"
-           value="{{ event.league or '' }}"
-           aria-label="Liga"
-           {% if not editable %}readonly{% endif %}>
+  <td class="editLocationLeagueTd">
+    <div class="d-flex flex-column gap-1">
+      <input class="form-control form-control-sm"
+             type="text"
+             name="events[{{ event.id }}][location]"
+             value="{{ event.location or '' }}"
+             aria-label="Halle"
+             {% if not editable %}readonly{% endif %}>
+      <input class="form-control form-control-sm"
+             type="text"
+             name="events[{{ event.id }}][league]"
+             value="{{ event.league or '' }}"
+             aria-label="Liga"
+             {% if not editable %}readonly{% endif %}>
+    </div>
   </td>
   <td class="editOpponentTd">
     <input class="form-control form-control-sm"

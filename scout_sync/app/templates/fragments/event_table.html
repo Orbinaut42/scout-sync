@@ -11,8 +11,7 @@
       <thead class="table-light">
         <tr>
           <th id="dateTimeColumn" scope="col">Datum</th>
-          <th id="locationColumn" scope="col">Halle</th>
-          <th id="leagueColumn" scope="col">Liga</th>
+          <th id="locationLeagueColumn" scope="col">Halle / Liga</th>
           <th id="opponentColumn" scope="col">Gegner</th>
           <th id="scouterColumn" scope="col">Scouter</th>
         </tr>
@@ -22,8 +21,10 @@
           {% set display_datetime = format_datetime(event.datetime) %}
           <tr class="{{ 'past' if event.datetime and event.datetime < current_time else 'upcoming' }}">
             <td class="viewDateTimeTd">{{ display_datetime.date }}{% if display_datetime.time %}<br>{{ display_datetime.time }}{% endif %}</td>
-            <td class="viewLocationTd">{{ event.location or '' }}</td>
-            <td class="viewLeagueTd">{{ event.league or '' }}</td>
+            <td class="viewLocationLeagueTd">
+              {% if event.location %}<div>{{ event.location }}</div>{% endif %}
+              {% if event.league %}<div>{{ event.league }}</div>{% endif %}
+            </td>
             <td class="viewOpponentTd">{{ event.opponent or '' }}</td>
             <td class="viewScouterTd">
               {% for scouter in event.scouters or [] %}

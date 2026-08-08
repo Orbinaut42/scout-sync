@@ -2,13 +2,8 @@ body {
     font-family: Tahoma, sans-serif;
 }
 
-#eventTable,
-#editTable {
-    min-width: 42rem;
-}
-
 .table-responsive {
-    max-height: calc(100vh - 2rem);
+    max-height: calc(100vh - 3rem);
 }
 
 #eventTable thead,
@@ -33,28 +28,22 @@ body {
 #eventTable th:nth-child(1),
 #editTable th:nth-child(1),
 #eventTable th:nth-child(2),
-#editTable th:nth-child(2),
-#eventTable th:nth-child(3),
-#editTable th:nth-child(3) {
-    width: 8rem;
+#editTable th:nth-child(2) {
+    width: 18%;
 }
 
 #eventTable th:nth-child(4),
 #editTable th:nth-child(4) {
-    min-width: 12rem;
+    width: 18%;
 }
 
-#eventTable th:nth-child(5),
 #editTable th:nth-child(5) {
-    width: 12rem;
-}
-
-#editTable th:nth-child(6) {
-    width: 2rem;
+    width: 48px;
 }
 
 #eventTable .viewOpponentTd,
 #eventTable .viewScouterTd,
+#eventTable .viewLocationLeagueTd,
 #editTable .editOpponentTd {
     white-space: normal;
 }
@@ -71,7 +60,6 @@ body {
 }
 
 #appFooter {
-    position: absolute;
     width: 100%;
     bottom: 0;
     z-index: 1020;
@@ -97,6 +85,39 @@ body {
     gap: 0.5rem;
 }
 
+#viewActions .form-switch {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-left: 0;
+}
+
+#viewActions .form-switch .form-check-input {
+    float: none;
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 1rem;
+}
+
+#viewActions .form-check-label {
+    display: flex;
+    align-items: center;
+    line-height: 1;
+}
+
+#viewActions .footerIcon {
+    width: 1rem;
+    height: 1rem;
+    color: var(--bs-primary);
+}
+
+.footerIcon {
+    display: block;
+    width: 1em;
+    height: 1em;
+    fill: currentColor;
+}
+
 #editorActions {
     display: none !important;
 }
@@ -118,15 +139,78 @@ body:has(#eventEditor) #editorActions {
     justify-content: center;
 }
 
+#submitEvents {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bs-primary);
+    background-color: var(--bs-white);
+    border-color: var(--bs-primary);
+}
+
 #addRowButton {
     margin-left: auto;
 }
 
-@media only screen and (min-width: 1280px) {
-    .table-responsive {
-        width: max-content;
+@media only screen and (max-width: 991px) {
+    body {
+        font-size: x-small;
     }
-} 
+
+    #editTable td {
+        padding: 2px;
+    }
+
+    #editTable .form-control-sm,
+    #editTable .form-select-sm {
+        font-size: inherit;
+        min-height: 0;
+        padding: 1px 2px;
+        line-height: 1.2;
+    }
+
+    #editTable .form-select-sm {
+        padding-right: 1.25rem;
+        background-position: right 0.25rem center;
+    }
+
+
+    #editTable .editDateTimeTd input[type="date"],
+    #editTable .editDateTimeTd input[type="time"] {
+        width: 4rem;
+    }
+
+    #editorActions #pwInput,
+    #editorActions #submitEvents {
+        font-size: inherit;
+        min-height: 0;
+        padding: 0;
+        line-height: 1.2;
+    }
+
+    #addRowButton,
+    #submitEvents,
+    #editTable .deleteButton {
+        width: 1rem;
+        height: 1rem;
+        padding: 0;
+        font-size: inherit;
+        line-height: 1;
+    }
+
+    #editTable th:nth-child(5) {
+        width: 1rem;
+    }
+
+    #editTable .editDateTimeTd .d-flex,
+    #editTable .editLocationLeagueTd .d-flex,
+    #editTable .editScouterTd .d-flex {
+        gap: 2px !important;
+    }
+}
 
 @media print {
     #container {
