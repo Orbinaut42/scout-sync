@@ -41,6 +41,7 @@
              name="events[{{ event.id }}][league]"
              value="{{ event.league or '' }}"
              aria-label="Liga"
+             data-assignment-league
              {% if not editable %}readonly{% endif %}>
     </div>
   </td>
@@ -58,6 +59,7 @@
         {% set selected_scouter = event_scouters[index] if index < event_scouters | length else '' %}
         <select class="form-select form-select-sm"
           name="events[{{ event.id }}][scouters]"
+          data-assignment-scouter
           aria-label="Scouter {{ index + 1 }}">
           <option value=""></option>
           {% for scouter in names %}

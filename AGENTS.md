@@ -48,3 +48,4 @@
 - When adding or updating docstrings, only describe what the function is currently doing, not why it was changed.
 - Avoid creating helper functions that only wrap a few lines of code, if that helper is only called in one place. If helper fuctions are needed, implement them in the most local context possible.
 - Read configuration values directly from the shared `config` object; do not add helper functions that only return config values. A convenient config value object may be introduced later in [scout_sync/config/__init__.py](scout_sync/config/__init__.py).
+- Don't put a semicolon at the end of lines in JavaScript code.

@@ -39,21 +39,31 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     page = client.get('/list')
     events_fragment = client.get('/list/events')
     editor = client.get('/list/edit')
+    summary_script = client.get('/list/assignment_summary.js')
 
     assert page.status_code == 200
     page_body = page.get_data(as_text=True)
     assert 'bootstrap-5.3.3.min.css' in page_body
     assert 'htmx-2.0.4.min.js' in page_body
+    assert 'assignment_summary.js' in page_body
     assert 'hx-get="/list/events"' in page_body
     assert 'hx-trigger="load"' in page_body
+    assert 'id="assignmentSummaryToggle"' in page_body
+    assert 'role="switch"' in page_body
+    assert 'aria-controls="assignmentSummary"' in page_body
+    assert 'aria-expanded="false"' in page_body
+    assert '<section id="assignmentSummary"' not in page_body
     assert 'Early Hall' not in page_body
-    assert 'Early Hall' in events_fragment.get_data(as_text=True)
-    assert '&lt;b&gt;Late&lt;/b&gt;' in events_fragment.get_data(as_text=True)
-    assert 'table-hover' not in events_fragment.get_data(as_text=True)
+    events_body = events_fragment.get_data(as_text=True)
+    assert 'Early Hall' in events_body
+    assert '&lt;b&gt;Late&lt;/b&gt;' in events_body
+    assert 'table-hover' not in events_body
+    assert 'id="assignmentSummary"' not in events_body
+    assert 'id="assignmentSummaryTable"' not in events_body
     assert (
         "this.querySelector('.upcoming')?.scrollIntoView({ block: 'start' })"
-        in events_fragment.get_data(as_text=True))
-    assert 'hx-trigger="focus from:window"' in events_fragment.get_data(as_text=True)
+        in events_body)
+    assert 'hx-trigger="focus from:window"' in events_body
     assert 'hx-trigger="focus from:window"' not in editor.get_data(as_text=True)
     assert 'id="editorFeedback"' not in page_body
     assert 'id="editorFeedback"' not in editor.get_data(as_text=True)
@@ -70,8 +80,20 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     assert 'value="Bob"' in editor_body
     assert 'hx-on::after-swap=' in editor_body
     assert "this.lastElementChild?.scrollIntoView({ block: 'nearest' })" in editor_body
-    assert 'statistics' not in editor_body.lower()
-    assert 'statistik' not in editor_body.lower()
+    assert editor_body.count('id="assignmentSummary"') == 1
+    assert 'id="assignmentSummaryTable"' in editor_body
+    assert 'id="assignmentSummaryBody"' in editor_body
+    assert 'id="assignmentSummaryEmpty"' in editor_body
+    assert 'Noch keine Scouter zugewiesen.' in editor_body
+    assert 'BBL / Eurocup' in editor_body
+    assert '>ProA<' in editor_body
+    assert '>Sonstige<' in editor_body
+    assert '>Gesamt<' in editor_body
+    assert 'hidden>' in editor_body
+    assert editor_body.count('data-assignment-league') == 2
+    assert editor_body.count('data-assignment-scouter') == 6
+    assert summary_script.status_code == 200
+    assert 'leagueCategory' in summary_script.get_data(as_text=True)
 
     manual_row = editor_body.split('data-game-id="manual-late"', 1)[1].split('</tr>', 1)[0]
     dbb_row = editor_body.split('data-game-id="dbb-early"', 1)[1].split('</tr>', 1)[0]
