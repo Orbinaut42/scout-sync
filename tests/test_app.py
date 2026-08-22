@@ -54,7 +54,14 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     assert 'aria-controls="assignmentSummary"' in page_body
     assert 'aria-expanded="false"' in page_body
     assert 'stroke-width="2"' in page_body
-    assert '<section id="assignmentSummary"' not in page_body
+    assert '<section id="assignmentSummary"' in page_body
+    assert 'id="assignmentSummaryTable"' in page_body
+    assert 'id="assignmentSummaryBody"' in page_body
+    assert 'BBL / Eurocup' in page_body
+    assert '>ProA<' in page_body
+    assert '>Sonstige<' in page_body
+    assert '>Gesamt<' in page_body
+    assert 'hidden>' in page_body
     assert 'Early Hall' not in page_body
     events_body = events_fragment.get_data(as_text=True)
     assert 'Early Hall' in events_body
@@ -85,16 +92,7 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
         'hx-on::after-request="document.getElementById(\'pwInput\').value = \'\'"'
         in editor_body)
     assert "this.lastElementChild?.scrollIntoView({ block: 'nearest' })" in editor_body
-    assert editor_body.count('id="assignmentSummary"') == 1
-    assert 'id="assignmentSummaryTable"' in editor_body
-    assert 'id="assignmentSummaryBody"' in editor_body
-    assert 'id="assignmentSummaryEmpty"' in editor_body
-    assert 'Noch keine Scouter zugewiesen.' in editor_body
-    assert 'BBL / Eurocup' in editor_body
-    assert '>ProA<' in editor_body
-    assert '>Sonstige<' in editor_body
-    assert '>Gesamt<' in editor_body
-    assert 'hidden>' in editor_body
+    assert 'id="assignmentSummary"' not in editor_body
     assert editor_body.count('data-assignment-league') == 2
     assert editor_body.count('data-assignment-scouter') == 6
     assert summary_script.status_code == 200
