@@ -30,10 +30,10 @@ def app_env(monkeypatch, tmp_path):
         type(config), 'web_cache_file', property(lambda _: str(cache_file)))
     monkeypatch.setattr(
         type(config), 'submit_pw', property(lambda _: 'secret'))
-    monkeypatch.setattr(Event, '_Event__emails', names.copy())
+    monkeypatch.setattr(Event, '_emails', names.copy())
     monkeypatch.setattr(
         Event,
-        '_Event__names',
+        '_names',
         {email: name for name, email in names.items()})
     monkeypatch.setattr(app_module, '_scheduler', scheduler)
     monkeypatch.setitem(app_module._app.config, 'TESTING', True)

@@ -16,8 +16,8 @@ class _GoogleAPI:
         simulate -> bool whether the syncronisations should only be simulated (for testing)"""
         self._resource_id = resource_id
         self._service = None
-        self.__timezone = timezone
-        self.__simulate = simulate
+        self._timezone = timezone
+        self._simulate = simulate
 
     def create_service(self, api_name, api_version):
         """Creates the Google API service ressource
@@ -91,13 +91,13 @@ class GoogleCalendarAPI(_GoogleAPI):
         the event should be passed as a dict"""
 
         date = arrow.get(event['start']['dateTime'])
-        now = arrow.now(self._GoogleAPI__timezone)
+        now = arrow.now(self._timezone)
         act = self._service.events().insert(
             calendarId=self._resource_id,
             body=event,
             sendUpdates=('all' if date > now else 'none'))
 
-        if not self._GoogleAPI__simulate:
+        if not self._simulate:
             act.execute()
 
     def _update_event(self, id, event, old_event):
@@ -105,7 +105,7 @@ class GoogleCalendarAPI(_GoogleAPI):
         the events should be passed as a dicts"""
         old_date = arrow.get(old_event['start']['dateTime'])
         new_date = arrow.get(event['start']['dateTime'])
-        now = arrow.now(self._GoogleAPI__timezone)
+        now = arrow.now(self._timezone)
 
         act = self._service.events().update(
             calendarId=self._resource_id,
@@ -113,20 +113,20 @@ class GoogleCalendarAPI(_GoogleAPI):
             body=event,
             sendUpdates='all' if old_date > now or new_date > now else 'none')
 
-        if not self._GoogleAPI__simulate:
+        if not self._simulate:
             act.execute()
 
     def _delete_event(self, id, event):
         """Deletes the specified event"""
 
         date = arrow.get(event['start']['dateTime'])
-        now = arrow.now(self._GoogleAPI__timezone)
+        now = arrow.now(self._timezone)
         act = self._service.events().delete(
             calendarId=self._resource_id,
             eventId=id,
             sendUpdates='all' if date > now else 'none')
 
-        if not self._GoogleAPI__simulate:
+        if not self._simulate:
             act.execute()
 
 
@@ -135,8 +135,8 @@ class GoogleSheetsAPI(_GoogleAPI):
 
     def __init__(self, spreadsheet_id, sheet_name, sheet_id, timezone, simulate=False):
         super().__init__(spreadsheet_id, timezone, simulate)
-        self.__sheet_name = sheet_name or None
-        self.__sheet_id = sheet_id or 0
+        self._sheet_name = sheet_name or None
+        self._sheet_id = sheet_id or 0
 
     @classmethod
     def serial_to_datetime(cls, serial, timezone):
@@ -148,7 +148,7 @@ class GoogleSheetsAPI(_GoogleAPI):
         return (datetime.naive - arrow.get('1899-12-30').naive).total_seconds() / (60 * 60 * 24)
 
     @classmethod
-    def __insert_row_request(cls, row, sheet_id):
+    def _insert_row_request(cls, row, sheet_id):
         return {
             'insertDimension': {
                 'inheritFromBefore': True,
@@ -162,7 +162,7 @@ class GoogleSheetsAPI(_GoogleAPI):
         }
 
     @classmethod
-    def __update_row_request(cls, row, data, sheet_id):
+    def _update_row_request(cls, row, data, sheet_id):
         return {
             'updateCells': {
                 'start': {
@@ -186,7 +186,7 @@ class GoogleSheetsAPI(_GoogleAPI):
         }
 
     @classmethod
-    def __delete_row_request(cls, row, sheet_id):
+    def _delete_row_request(cls, row, sheet_id):
         return {
             'deleteDimension': {
                 'range': {
@@ -212,7 +212,7 @@ class GoogleSheetsAPI(_GoogleAPI):
 
         values = self._service.spreadsheets().values().get(
             spreadsheetId=self._resource_id,
-            range=self.__range_descriptor(range_start, range_end),
+            range=self._range_descriptor(range_start, range_end),
             valueRenderOption='UNFORMATTED_VALUE',
             majorDimension=major_dimension).execute()['values']
 
@@ -231,10 +231,10 @@ class GoogleSheetsAPI(_GoogleAPI):
         requests = []
         for row, data in rows_data:
             requests.extend([
-                GoogleSheetsAPI.__insert_row_request(row, self.__sheet_id),
-                GoogleSheetsAPI.__update_row_request(row, data, self.__sheet_id)])
+                GoogleSheetsAPI._insert_row_request(row, self._sheet_id),
+                GoogleSheetsAPI._update_row_request(row, data, self._sheet_id)])
 
-        self.__batch_update(requests)
+        self._batch_update(requests)
 
     def _update_rows(self, rows_data):
         """Updates the contend of the specified rows
@@ -242,28 +242,28 @@ class GoogleSheetsAPI(_GoogleAPI):
         (row_no (zero-based), [cell values])"""
 
         requests = [
-            GoogleSheetsAPI.__update_row_request(row, data, self.__sheet_id)
+            GoogleSheetsAPI._update_row_request(row, data, self._sheet_id)
             for row, data in rows_data]
-        self.__batch_update(requests)
+        self._batch_update(requests)
 
     def _delete_rows(self, rows):
         """Deletes the specified rows (zero-based)"""
 
         requests = [
-            GoogleSheetsAPI.__delete_row_request(row, self.__sheet_id)
+            GoogleSheetsAPI._delete_row_request(row, self._sheet_id)
             for row in rows]
-        self.__batch_update(requests)
+        self._batch_update(requests)
 
-    def __batch_update(self, requests):
+    def _batch_update(self, requests):
         body = {'requests': requests}
         act = self._service.spreadsheets().batchUpdate(
             spreadsheetId=self._resource_id,
             body=body)
 
-        if not self._GoogleAPI__simulate:
+        if not self._simulate:
             act.execute()
 
-    def __range_descriptor(self, start, end=None):
+    def _range_descriptor(self, start, end=None):
         """Returns a range descriptor string
         If 'start' and 'end' are tuples, the returned string is of the 'R1C1' format,
         else of the 'A1' format"""
@@ -271,7 +271,7 @@ class GoogleSheetsAPI(_GoogleAPI):
         if end is None:
             end = start
 
-        sheet_descriptor = f"{self.__sheet_name}!" if self.__sheet_name is not None else ''
+        sheet_descriptor = f"{self._sheet_name}!" if self._sheet_name is not None else ''
         if isinstance(start, tuple):
             return f"{sheet_descriptor}{start[0]}C{start[1]}:R{end[0]}C{end[1]}"
         else:
