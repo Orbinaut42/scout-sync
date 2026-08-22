@@ -182,13 +182,15 @@ def _edit_submit():
     if _scheduler is not None:
         _scheduler.add_job(sync, kwargs={'source': 'cache'})
 
-    return render_template(
+    response = make_response(render_template(
         'fragments/event_table.html',
         **template_context(
             event_list,
             {
                 'kind': 'success',
-                'message': 'Die Spieltermine wurden gespeichert.'}))
+                'message': 'Die Spieltermine wurden gespeichert.'})))
+    response.headers['HX-Trigger-After-Swap'] = 'edit-mode-saved'
+    return response
 
 
 def app_startup():

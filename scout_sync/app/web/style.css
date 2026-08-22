@@ -157,7 +157,7 @@ body:has(#eventEditor) #assignmentSummaryActions {
 
 #assignmentSummary {
     flex: 0 0 auto;
-    margin-top: 0.5rem;
+    /*margin-top: 0.5rem;*/
     padding: 0.5rem;
     border: 1px solid var(--bs-border-color);
     border-radius: var(--bs-border-radius);
@@ -237,6 +237,7 @@ body:not(:has(#eventEditor)) #assignmentSummary {
     #editTable .editDateTimeTd input[type="date"],
     #editTable .editDateTimeTd input[type="time"] {
         width: 4rem;
+        text-align: left;
     }
 
     #editorActions #pwInput,

@@ -10,7 +10,8 @@
     <script src="{{ url_for('static', filename='assignment_summary.js') }}" defer></script>
     <title>{{ title }}</title>
   </head>
-  <body class="d-flex flex-column min-vh-100 overflow-y-hidden">
+    <body class="d-flex flex-column min-vh-100 overflow-y-hidden"
+      hx-on:edit-mode-saved="document.getElementById('pwInput').value = ''; const toggle = document.getElementById('editModeToggle'); if (toggle?.checked) toggle.click()">
     <main id="container" class="container-lg flex-grow-1 height-100">
         <div id="dashboard" class="container-fluid px-0">
           <div id="content"
@@ -22,7 +23,7 @@
         </div>
     </main>
     <footer id="appFooter" class="container-lg flex-grow-1 d-print-none">
-      <div class="container-fluid px-0 py-2">
+      <div class="container-fluid px-2 py-2">
 
         {% include "fragments/assignment_summary.html" %}
 
@@ -91,7 +92,10 @@
                    viewBox="0 0 16 16"
                    aria-hidden="true"
                    focusable="false">
-                <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+                    <path d="m3 8 3.5 3.5L13 5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"/>
               </svg>
             </button>
             <button id="addRowButton"

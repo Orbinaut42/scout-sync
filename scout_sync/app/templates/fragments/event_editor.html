@@ -6,7 +6,8 @@
         action="/list/edit"
         hx-post="/list/edit"
         hx-target="#content"
-        hx-swap="innerHTML">
+        hx-swap="innerHTML"
+        hx-on::after-request="document.getElementById('pwInput').value = ''">
     <div class="table-responsive">
       <table id="editTable" class="table table-sm table-striped align-middle">
         <thead class="table-light">

@@ -46,12 +46,14 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     assert 'bootstrap-5.3.3.min.css' in page_body
     assert 'htmx-2.0.4.min.js' in page_body
     assert 'assignment_summary.js' in page_body
+    assert 'hx-on:edit-mode-saved=' in page_body
     assert 'hx-get="/list/events"' in page_body
     assert 'hx-trigger="load"' in page_body
     assert 'id="assignmentSummaryToggle"' in page_body
     assert 'role="switch"' in page_body
     assert 'aria-controls="assignmentSummary"' in page_body
     assert 'aria-expanded="false"' in page_body
+    assert 'stroke-width="2"' in page_body
     assert '<section id="assignmentSummary"' not in page_body
     assert 'Early Hall' not in page_body
     events_body = events_fragment.get_data(as_text=True)
@@ -79,6 +81,9 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     assert 'value="Alice"' in editor_body
     assert 'value="Bob"' in editor_body
     assert 'hx-on::after-swap=' in editor_body
+    assert (
+        'hx-on::after-request="document.getElementById(\'pwInput\').value = \'\'"'
+        in editor_body)
     assert "this.lastElementChild?.scrollIntoView({ block: 'nearest' })" in editor_body
     assert editor_body.count('id="assignmentSummary"') == 1
     assert 'id="assignmentSummaryTable"' in editor_body
@@ -151,6 +156,7 @@ def test_submit_persists_cache_filters_scouters_and_enqueues_once(app_env):
     saved = json.loads(app_env['cache_file'].read_text(encoding='utf8'))
     body = response.get_data(as_text=True)
     assert response.status_code == 200
+    assert response.headers['HX-Trigger-After-Swap'] == 'edit-mode-saved'
     assert 'eventView' in body
     assert 'gespeichert' in body
     assert 'id="toastContainer"' in body
@@ -171,6 +177,7 @@ def test_wrong_password_keeps_feedback_target_and_does_not_write(app_env):
         data=submit_data(password='wrong'))
 
     assert response.status_code == 200
+    assert 'HX-Trigger-After-Swap' not in response.headers
     assert response.headers['HX-Retarget'] == '#toastContainer'
     assert response.headers['HX-Reswap'] == 'outerHTML'
     assert 'Passwort' in response.get_data(as_text=True)
