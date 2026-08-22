@@ -7,5 +7,5 @@ app = app_startup()
 app.run(
     debug=True,
     host='0.0.0.0',
-    port=config.get('COMMON', 'port'),
+    port=config.port,
     use_reloader=False)

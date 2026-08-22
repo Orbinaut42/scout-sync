@@ -7,23 +7,23 @@ from .google_api import GoogleCalendarAPI
 from ..config import config
 
 logging.basicConfig(
-    filename=config.get('COMMON', 'log_file'),
+    filename=config.log_file,
     format='%(asctime)s %(levelname)s: %(message)s',
     datefmt='%Y-%m-%dT%H:%M:%S',
     level=logging.INFO)
 
 logging.getLogger('googleapiclient').setLevel(logging.ERROR)
 
-TIMEZONE = config.get('COMMON', 'timezone')
-SIMULATE = config.getboolean('COMMON', 'simulate')
+TIMEZONE = config.timezone
+SIMULATE = config.simulate
 
 
 class Event:
     """Manages conversion between different event representation
     formats (DBB schedule, Google Calendar, JSON)"""
 
-    __emails = {k: v for k, v in config.items('EMAILS')}
-    __names = {v: k for k, v in config.items('EMAILS')}
+    __emails = config.emails
+    __names = {v: k for k, v in config.emails.items()}
 
     def __init__(
             self, id, datetime,
@@ -311,14 +311,12 @@ class CalendarHandler(GoogleCalendarAPI):
 class ScheduleHandler:
     "manages downloads from the DBB game schedule database"
 
-    arenas = dict(config['SCHEDULE_ARENAS'])
-    __REQUEST_TIMEOUT = config.getint('COMMON', 'schedule_request_timeout')
+    arenas = config.schedule_arenas
+    __REQUEST_TIMEOUT = config.schedule_request_timeout
 
     def __init__(self, leagues):
         self.__schedule = []
-        self.__leagues = [
-            dict(zip(['league_name', 'league_id', 'team_permanent_id', 'team_season_id'], league))
-            for league in leagues]
+        self.__leagues = leagues
 
     def connect(self):
         api_url = 'https://www.basketball-bund.net/rest'
@@ -331,7 +329,10 @@ class ScheduleHandler:
         with requests.Session() as s:
             for league in self.__leagues:
                 # get the complete league schedule
-                league_name, league_id, team_permanent_id, team_season_id = league.values()
+                league_name = league['league_name']
+                league_id = league['league_id']
+                team_permanent_id = league['team_permanent_id']
+                team_season_id = league['team_season_id']
                 r = s.get(
                     schedule_url.format(league_id=league_id),
                     timeout=ScheduleHandler.__REQUEST_TIMEOUT)
@@ -482,7 +483,7 @@ class WebCacheHandler():
         return self.__events
 
     def store_events(self, events):
-        with open(config.get('COMMON', 'web_cache_file'), 'w', encoding='utf8') as web_cache_file:
+        with open(config.web_cache_file, 'w', encoding='utf8') as web_cache_file:
             json.dump([e.as_json() for e in events], web_cache_file, ensure_ascii=False)
 
 
@@ -493,16 +494,14 @@ def sync(source):
     start_time = time.time()
     logging.info(f"Starting sync from {source}")
 
-    calendar_hdl = CalendarHandler(config.get('CALENDAR', 'id'))
+    calendar_hdl = CalendarHandler(config.calendar_id)
     if not calendar_hdl.connect():
         raise RuntimeError('Connection to the calendar failed.')
 
-    cache_hdl = WebCacheHandler(config.get('COMMON', 'web_cache_file'))
+    cache_hdl = WebCacheHandler(config.web_cache_file)
 
     if source == 'schedule':
-        schedule_leagues = [
-            config.getlist('SCHEDULE_LEAGUES', o)
-            for o in config['SCHEDULE_LEAGUES'].keys()]
+        schedule_leagues = config.schedule_leagues
 
         schedule_hdl = ScheduleHandler(schedule_leagues)
         if not schedule_hdl.connect():

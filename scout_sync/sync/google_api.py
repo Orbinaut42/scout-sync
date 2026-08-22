@@ -38,8 +38,8 @@ class _GoogleAPI:
 
             return credentials
 
-        oauth_info = config.get('GOOGLE_API', 'oauth_info', fallback=None)
-        service_account_info = config.get('GOOGLE_API', 'service_account_info', fallback=None)
+        oauth_info = config.oauth_info
+        service_account_info = config.service_account_info
 
         # prioritise authentication with oauth
         if oauth_info:

@@ -9,7 +9,7 @@ from ..config import config
 from ..sync import sync, Event, WebCacheHandler
 
 logging.basicConfig(
-    filename=config.get('COMMON', 'log_file'),
+    filename=config.log_file,
     format='%(asctime)s %(levelname)s: %(message)s',
     datefmt='%Y-%m-%dT%H:%M:%S',
     level=logging.INFO)
@@ -36,7 +36,7 @@ def template_context(events=None, feedback=None):
                 'date_input': '',
                 'time_input': ''}
 
-        local_value = value.to(config.get('COMMON', 'timezone'))
+        local_value = value.to(config.timezone)
         has_time = local_value.hour or local_value.minute
         return {
             'date': local_value.format('ddd, DD.MM.YY', locale='de'),
@@ -52,17 +52,17 @@ def template_context(events=None, feedback=None):
             else float('inf')))
 
     return {
-        'title': config.get('COMMON', 'title'),
+        'title': config.title,
         'events': sorted_events,
-        'names': sorted(config['EMAILS'].keys()),
-        'timezone': config.get('COMMON', 'timezone'),
-        'current_time': arrow.now(config.get('COMMON', 'timezone')),
+        'names': sorted(config.emails.keys()),
+        'timezone': config.timezone,
+        'current_time': arrow.now(config.timezone),
         'format_datetime': format_datetime,
         'feedback': feedback}
 
 
 def _cached_events():
-    return WebCacheHandler(config.get('COMMON', 'web_cache_file')).list_events()
+    return WebCacheHandler(config.web_cache_file).list_events()
 
 
 @_app.route('/')
@@ -137,7 +137,7 @@ def _edit_submit():
     event_field_pattern = re.compile(
         r'^events\[([^\]]+)\]\[(date|time|location|league|opponent|scouters)\]$')
 
-    pw = config.get('COMMON', 'submit_pw')
+    pw = config.submit_pw
     if pw == '' or pw != request.form.get('password'):
         return editor_feedback('password', 'Passwort falsch.')
 
@@ -176,7 +176,7 @@ def _edit_submit():
         logging.exception(e)
         return editor_feedback('validation', 'Fehler beim Speichern der Spieltermine.')
 
-    WebCacheHandler(config.get('COMMON', 'web_cache_file')).store_events(event_list)
+    WebCacheHandler(config.web_cache_file).store_events(event_list)
     logging.info('Events cache updated from webpage.')
 
     if _scheduler is not None:
@@ -200,11 +200,11 @@ def app_startup():
 
     if _scheduler is None:
         _scheduler = BackgroundScheduler(
-            timezone=config.get('COMMON', 'timezone'))
+            timezone=config.timezone)
         _scheduler.start()
 
-    if 'SYNC_JOB' in config:
-        interval = config.getint('SYNC_JOB', 'interval')
+    interval = config.sync_interval
+    if interval is not None:
 
         print(f'Scheduling sync job every {interval} minutes.')
         _scheduler.add_job(

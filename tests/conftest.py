@@ -17,9 +17,6 @@ class FakeScheduler:
 
 @pytest.fixture
 def app_env(monkeypatch, tmp_path):
-    original_emails = dict(config.items('EMAILS'))
-    original_cache_file = config.get('COMMON', 'web_cache_file')
-    original_submit_password = config.get('COMMON', 'submit_pw')
     original_scheduler = app_module._scheduler
     names = {
         'Alice': 'alice@example.com',
@@ -27,10 +24,12 @@ def app_env(monkeypatch, tmp_path):
     cache_file = tmp_path / 'web-cache.json'
     scheduler = FakeScheduler()
 
-    config['EMAILS'].clear()
-    config['EMAILS'].update(names)
-    config.set('COMMON', 'web_cache_file', str(cache_file))
-    config.set('COMMON', 'submit_pw', 'secret')
+    monkeypatch.setattr(
+        type(config), 'emails', property(lambda _: names.copy()))
+    monkeypatch.setattr(
+        type(config), 'web_cache_file', property(lambda _: str(cache_file)))
+    monkeypatch.setattr(
+        type(config), 'submit_pw', property(lambda _: 'secret'))
     monkeypatch.setattr(Event, '_Event__emails', names.copy())
     monkeypatch.setattr(
         Event,
@@ -46,10 +45,6 @@ def app_env(monkeypatch, tmp_path):
             'names': names,
             'scheduler': scheduler}
     finally:
-        config['EMAILS'].clear()
-        config['EMAILS'].update(original_emails)
-        config.set('COMMON', 'web_cache_file', original_cache_file)
-        config.set('COMMON', 'submit_pw', original_submit_password)
         app_module._scheduler = original_scheduler
 
 
