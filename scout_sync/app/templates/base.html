@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
     <script src="{{ url_for('static', filename='htmx-2.0.4.min.js') }}" defer></script>
     <script src="{{ url_for('static', filename='assignment_summary.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='event_editor.js') }}" defer></script>
     <title>{{ title }}</title>
   </head>
     <body class="d-flex flex-column min-vh-100 overflow-y-hidden"
@@ -34,7 +35,7 @@
                      class="form-check-input"
                      type="checkbox"
                      role="switch"
-                     hx-on:change="htmx.ajax('GET', this.checked ? '/list/edit' : '/list/events', {target: '#content', swap: 'innerHTML'})">
+                       hx-on:change="if (!this.checked) document.getElementById('pwInput').value = ''; htmx.ajax('GET', this.checked ? '/list/edit' : '/list/events', {target: '#content', swap: 'innerHTML'})">
               <label class="form-check-label"
                      for="editModeToggle"
                      title="Bearbeiten">

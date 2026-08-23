@@ -36,10 +36,12 @@
 - Runtime paths such as the log and web-cache files come from the `[COMMON]` configuration section; do not hard-code them.
 - The sync flow has external side effects: Google Calendar writes, DBB HTTP requests, and cache writes. Prefer `simulate` mode or cache input before testing behavior that mutates remote data.
 - Preserve event identifiers and `schedule_info`; they are used to correlate DBB records with Google Calendar records and to decide whether events are added, updated, or deleted.
+- When the user prompt is ambiguous or multiple equivalent options appear, ask the user for clarification, instead of guessing the desired approach.
 
 ## Implementation conventions
 
 - Keep changes focused and preserve the existing public entry points and configuration keys.
+- Use the informal "du" form for German text in the UI; avoid formal "Sie" phrasing.
 - Use the existing module-level logging style and explicit UTF-8 for JSON/file I/O.
 - Preserve timezone-aware `arrow` values and the configured timezone when creating or parsing events.
 - When changing event fields or serialization, review all `Event.from_*` and `Event.as_*` conversions plus calendar diffing in `sync()`.
@@ -47,5 +49,5 @@
 - Avoid broad refactors unless requested; this code integrates with remote APIs and relies on configuration-driven behavior.
 - When adding or updating docstrings, only describe what the function is currently doing, not why it was changed.
 - Avoid creating helper functions that only wrap a few lines of code, if that helper is only called in one place. If helper fuctions are needed, implement them in the most local context possible.
-- Read configuration values directly from the shared `config` object; do not add helper functions that only return config values. A convenient config value object may be introduced later in [scout_sync/config/__init__.py](scout_sync/config/__init__.py).
+- Insert a blank line when the indetation level decreases in Python code
 - Don't put a semicolon at the end of lines in JavaScript code.

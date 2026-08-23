@@ -73,6 +73,14 @@ body {
     background-color: var(--bs-tertiary-bg);
 }
 
+#editTable tbody tr[data-dirty="true"] {
+    box-shadow: inset 3px 0 0 var(--bs-warning);
+}
+
+#editTable [data-dirty-field="true"] {
+    border-color: var(--bs-warning);
+}
+
 #appFooter {
     position: sticky;
     bottom: 0;
