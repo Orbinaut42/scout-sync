@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-5.3.3.min.css') }}"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+    <script src="{{ url_for('static', filename='htmx-2.0.4.min.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='assignment_summary.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='event_editor.js') }}" defer></script>
+    <title>{{ title }}</title>
+  </head>
+    <body class="d-flex flex-column min-vh-100 overflow-y-hidden"
+      hx-on:edit-mode-saved="document.getElementById('pwInput').value = ''; const toggle = document.getElementById('editModeToggle'); if (toggle?.checked) toggle.click()">
+    <main id="container" class="container-lg flex-grow-1 height-100">
+        <div id="dashboard" class="container-fluid px-0">
+          <div id="content"
+              hx-get="/list/events"
+              hx-trigger="load"
+              hx-target="#content"
+              hx-swap="innerHTML">
+          </div>
+        </div>
+    </main>
+    <footer id="appFooter" class="container-lg flex-grow-1 d-print-none">
+      <div class="container-fluid px-2 py-2">
+
+        {% include "fragments/assignment_summary.html" %}
+
+        <div id="footerActions">
+          <div id="viewActions" class="d-flex align-items-center">
+            <div class="form-check form-switch mb-0">
+              <input id="editModeToggle"
+                     class="form-check-input"
+                     type="checkbox"
+                     role="switch"
+                       hx-on:change="if (!this.checked) document.getElementById('pwInput').value = ''; htmx.ajax('GET', this.checked ? '/list/edit' : '/list/events', {target: '#content', swap: 'innerHTML'})">
+              <label class="form-check-label"
+                     for="editModeToggle"
+                     title="Bearbeiten">
+                <svg class="footerIcon"
+                     viewBox="0 0 16 16"
+                     aria-hidden="true"
+                     focusable="false">
+                  <path d="M12.854.146a.5.5 0 0 0-.708 0l-10 10A.5.5 0 0 0 2 10.5V14a.5.5 0 0 0 .5.5H6a.5.5 0 0 0 .354-.146l10-10a.5.5 0 0 0 0-.708zM11.207 2.5 13.5 4.793 14.293 4 12 1.707zM12.5 5.5 10.207 3.207 3 10.414V13h2.586z"/>
+                </svg>
+                <span class="visually-hidden">Bearbeiten</span>
+              </label>
+            </div>
+            <div id="assignmentSummaryActions">
+              <div class="form-check form-switch mb-0">
+                <input id="assignmentSummaryToggle"
+                       class="form-check-input"
+                       type="checkbox"
+                       role="switch"
+                       aria-controls="assignmentSummary"
+                       aria-expanded="false">
+                <label class="form-check-label"
+                       for="assignmentSummaryToggle"
+                       title="Einsätze">
+                  <svg class="footerIcon"
+                       viewBox="0 0 16 16"
+                       aria-hidden="true"
+                       focusable="false">
+                    <path d="M1 11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3H1zm5-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7H6zm5-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h-4z"/>
+                  </svg>
+                  <span class="visually-hidden">Einsätze</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div id="editorActions" class="d-flex flex-wrap align-items-center gap-2">
+            <div>
+              <label for="pwInput" class="visually-hidden">Passwort</label>
+              <input id="pwInput"
+                     name="password"
+                     form="eventForm"
+                     class="form-control form-control-sm"
+                     type="password"
+                     autocomplete="current-password"
+                     placeholder="Passwort"
+                     aria-label="Passwort"
+                     required>
+            </div>
+            <button id="submitEvents"
+                    form="eventForm"
+                    type="submit"
+                    class="btn btn-outline-primary btn-sm"
+                    aria-label="Übernehmen"
+                    title="Übernehmen">
+              <svg class="footerIcon"
+                   viewBox="0 0 16 16"
+                   aria-hidden="true"
+                   focusable="false">
+                    <path d="m3 8 3.5 3.5L13 5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"/>
+              </svg>
+            </button>
+            <button id="addRowButton"
+              type="button"
+              class="btn btn-outline-primary btn-sm"
+              aria-label="Spiel hinzufügen"
+              title="Spiel hinzufügen"
+              hx-get="/list/edit/row"
+              hx-target="#editEventTable"
+              hx-swap="beforeend">+</button>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,88 @@
+{% set editable = event.schedule_info is none %}
+{% set display_datetime = format_datetime(event.datetime) %}
+{% set event_scouters = event.scouters or [] %}
+{% set select_count = [3, event_scouters | length] | max %}
+{% set new_event = new_event | default(false) %}
+<tr class="{{ 'locked' if not editable else '' }}"
+    data-game-id="{{ event.id }}"
+    data-new-event="{{ 'true' if new_event else 'false' }}"
+    data-dirty="false"
+    data-original-date="{{ display_datetime.date_input }}"
+    data-original-time="{{ display_datetime.time_input }}"
+    data-original-location="{{ event.location or '' }}"
+    data-original-league="{{ event.league or '' }}"
+    data-original-opponent="{{ event.opponent or '' }}"
+    data-original-scouters='{{ event_scouters | sort | tojson }}'>
+  <td class="editDateTimeTd">
+    <div class="d-flex flex-column gap-1">
+      <input class="form-control form-control-sm"
+             type="date"
+             name="events[{{ event.id }}][date]"
+              data-event-field="date"
+             value="{{ display_datetime.date_input }}"
+             aria-label="Datum"
+             {% if not editable %}disabled{% endif %}>
+      <input class="form-control form-control-sm"
+             type="time"
+             name="events[{{ event.id }}][time]"
+              data-event-field="time"
+             value="{{ display_datetime.time_input }}"
+             aria-label="Uhrzeit"
+             {% if not editable %}disabled{% endif %}>
+    </div>
+  </td>
+  <td class="editLocationLeagueTd">
+    <div class="d-flex flex-column gap-1">
+      <input class="form-control form-control-sm"
+             type="text"
+             name="events[{{ event.id }}][location]"
+              data-event-field="location"
+             value="{{ event.location or '' }}"
+             aria-label="Halle"
+             {% if not editable %}readonly{% endif %}>
+      <input class="form-control form-control-sm"
+             type="text"
+             name="events[{{ event.id }}][league]"
+              data-event-field="league"
+             value="{{ event.league or '' }}"
+             aria-label="Liga"
+             data-assignment-league
+             {% if not editable %}readonly{% endif %}>
+    </div>
+  </td>
+  <td class="editOpponentTd">
+    <input class="form-control form-control-sm"
+           type="text"
+           name="events[{{ event.id }}][opponent]"
+          data-event-field="opponent"
+           value="{{ event.opponent or '' }}"
+           aria-label="Gegner"
+           {% if not editable %}readonly{% endif %}>
+  </td>
+  <td class="editScouterTd">
+    <div class="d-flex flex-column gap-1">
+      {% for index in range(select_count) %}
+        {% set selected_scouter = event_scouters[index] if index < event_scouters | length else '' %}
+        <select class="form-select form-select-sm"
+          name="events[{{ event.id }}][scouters]"
+          data-event-field="scouters"
+          data-assignment-scouter
+          aria-label="Scouter {{ index + 1 }}">
+          <option value=""></option>
+          {% for scouter in names %}
+            <option value="{{ scouter }}"{% if scouter == selected_scouter %} selected{% endif %}>{{ scouter }}</option>
+          {% endfor %}
+        </select>
+      {% endfor %}
+    </div>
+  </td>
+  <td class="deleteButtonTd">
+    {% if editable %}
+      <button type="button"
+              class="deleteButton btn btn-outline-danger btn-sm"
+              aria-label="Spiel löschen"
+              title="Spiel löschen"
+              hx-on:click="this.closest('tr').remove()">&times;</button>
+    {% endif %}
+  </td>
+</tr>

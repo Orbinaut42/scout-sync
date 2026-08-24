@@ -1,3 +1,3 @@
-from .app import app, app_startup
+from .app import app_startup
 
-__all__ = ['app', 'app_startup']
+__all__ = ['app_startup']

@@ -2,275 +2,319 @@ body {
     font-family: Tahoma, sans-serif;
 }
 
-.editOnly {
-    display: none;
+.table-responsive {
+    max-height: calc(100vh - 3rem);
 }
 
-table {
-    width: 100%;
-    table-layout: fixed;
-    border-spacing: 0px;
+#eventEditor {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
-table, table select {
-    font-size: 2.2vw;
+#eventEditor > form {
+    min-height: 0;
 }
 
-#dateTimeColumn {
-    width: 15%
+#eventEditor > form > .table-responsive {
+    max-height: calc(100vh - 2rem);
 }
 
-#locationColumn {
-    width: 18%
-}
-
-#leagueColumn {
-    width: 15%
-}
-
-#scouterColumn {
-    width: 15%
-}
-
-.viewOpponentTd {
-    text-wrap: balance
-}
-
-.editOpponentTd {
-    text-wrap: stable
-}
-
-.statsTableColumn {
-    width: 20% 
-}
-
-#deleteButtonColumn {
-    width: 56px
-}
-
-thead {
+#eventTable thead,
+#editTable thead {
     position: sticky;
     top: 0;
-    background: whitesmoke;
+    z-index: 2;
+    background-color: var(--bs-tertiary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
 }
 
-th, td {
-    padding-top: .25em;
-    padding-bottom: .25em;
-    padding-left: .25em;
-    padding-right: .5em;
-    white-space: nowrap;
+#eventTable tbody tr {
+    height: 3.5rem;
     text-overflow: ellipsis;
     overflow: hidden;
-    vertical-align: top;
 }
 
-.deleteButtonTd {
-    text-align: right;
+#eventTable tbody tr.upcoming {
+    scroll-margin-top: 7rem;
 }
 
-.editLocationTd[contenteditable=false],
-.editLeagueTd[contenteditable=false],
-.editOpponentTd[contenteditable=false] {
-    color: dimgray;
+#eventTable th:nth-child(1),
+#editTable th:nth-child(1),
+#eventTable th:nth-child(2),
+#editTable th:nth-child(2) {
+    width: 20%;
 }
 
-th {
-    text-align: left;
-    border-bottom: solid;
-    border-top: solid;
-    background-color: whitesmoke;
+#eventTable th:nth-child(4),
+#editTable th:nth-child(4) {
+    width: 20%;
 }
 
-tr:nth-child(even) {
-    background-color: whitesmoke;
+#editTable th:nth-child(5) {
+    width: 48px;
 }
 
-tr:nth-child(odd) {
-    background-color: white;
+#eventTable .viewOpponentTd,
+#eventTable .viewScouterTd,
+#eventTable .viewLocationLeagueTd,
+#editTable .editOpponentTd {
+    white-space: normal;
 }
 
-.past {
-    color: dimgray;
+#eventTable .past {
+    color: var(--bs-secondary-color);
+    opacity: 0.6;
 }
 
-#editDiv {
+#editTable .locked input[disabled],
+#editTable .locked input[readonly] {
+    color: var(--bs-secondary-color);
+    background-color: var(--bs-tertiary-bg);
+}
+
+#editTable tbody tr[data-dirty="true"] {
+    box-shadow: inset 3px 0 0 var(--bs-warning);
+}
+
+#editTable [data-dirty-field="true"] {
+    border-color: var(--bs-warning);
+}
+
+#appFooter {
     position: sticky;
     bottom: 0;
     width: 100%;
-    background-color: white;
-    border-top: 2px solid dimgray;
+    z-index: 1020;
+    background-color: var(--bs-body-bg);
+    border-top: 1px solid var(--bs-border-color);
 }
 
-#editDiv div {
-    margin: .5em;
+#toastContainer {
+    z-index: 1090;
 }
 
-#submitDiv *, #editDiv label {
-    font-size: 3vw;
-    vertical-align: middle;
-}
-
-input, button, select, .switch {
-    background-color: white;
-    border: 2px solid dimgray;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-button:hover, input:enabled:hover, select:hover {
-    background-color: whitesmoke;
-}
-
-button {
-    border: 4px solid dimgray;
-    width: 2em;
-    height: 1.5em;
-    min-height: 40px;
-    text-align: center;
-    line-height: 1em;
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-}
-
-button:disabled {
+#toastContainer:not(:has(.toast)) {
     display: none;
 }
 
-.deleteButton, #addRowButton {
-    color: dimgrey;
-    font-size: 25px;
-    font-weight: bold;
+#toastContainer .toast {
+    min-width: min(22rem, calc(100vw - 2rem));
 }
 
-.deleteButton {
-    background-image: url(icon_delete.png);  
+#footerActions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+#viewActions {
+    gap: 0.75rem;
+}
+
+#viewActions .form-switch {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-left: 0;
+}
+
+#viewActions .form-switch .form-check-input {
+    float: none;
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 1rem;
+}
+
+#viewActions .form-check-label {
+    display: flex;
+    align-items: center;
+    line-height: 1;
+}
+
+#viewActions .footerIcon {
+    width: 1rem;
+    height: 1rem;
+    color: var(--bs-primary);
+}
+
+.footerIcon {
+    display: block;
+    width: 1em;
+    height: 1em;
+    fill: currentColor;
+}
+
+#editorActions {
+    display: none !important;
+}
+
+body:has(#eventEditor) #editorActions {
+    display: flex !important;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#assignmentSummaryActions {
+    display: none !important;
+}
+
+body:has(#eventEditor) #assignmentSummaryActions {
+    display: block !important;
+}
+
+#assignmentSummary {
+    flex: 0 0 auto;
+    /*margin-top: 0.5rem;*/
+    padding: 0.5rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    background-color: var(--bs-tertiary-bg);
+}
+
+#assignmentSummary[hidden],
+body:not(:has(#eventEditor)) #assignmentSummary {
+    display: none !important;
+}
+
+#assignmentSummary .table-responsive {
+    max-height: min(25vh, 16rem);
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+#assignmentSummaryTable {
+    min-width: 32rem;
+}
+
+#assignmentSummaryTable th,
+#assignmentSummaryTable td {
+    white-space: nowrap;
+}
+
+#addRowButton,
+#editTable .deleteButton {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#submitEvents {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bs-primary);
+    background-color: var(--bs-white);
+    border-color: var(--bs-primary);
 }
 
 #addRowButton {
-    background-image: url(icon_add.png);  
+    margin-left: auto;
 }
 
-#addRowDiv {
-    text-align: right;
-}
-
-#pwInput, #submitEvents {
-    width: 8em;
-}
-
-#sliderDiv .switch:not {
-    margin-right: 4em
-}
-
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 56px;
-    height: 16px;
-    margin: 8px;
-    border-radius: 4px;
-}
-  
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: darkgrey;
-    -webkit-transition: .4s;
-    transition: .4s;
-    cursor: pointer;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 32px;
-    width: 32px;
-    left: -8px;
-    bottom: -8px;
-    background-color: black;
-    -webkit-transition: .4s;
-    transition: .4s;
-    border-radius: 4px;
-}
-
-input:checked + .slider {
-    background-color: whitesmoke;
-}
-
-input:checked + .slider:before {
-    -webkit-transform: translateX(40px);
-    -ms-transform: translateX(40px);
-    transform: translateX(40px);
-}
-
-#sliderDiv .switch:not(:first-child) {
-    margin-left: 2em
-}
-
-@media only screen and (min-width: 1280px) {
-    #container {
-        width: min-content;
-    }
-    
-    table, table select {
-        font-size: initial;
-        width: initial;
-        table-layout: initial;
+@media only screen and (max-width: 991px) {
+    body {
+        font-size: x-small;
     }
 
-    #submitDiv *, #editDiv label {
-        font-size: initial;
+    #editTable td {
+        padding: 2px;
     }
 
-    #viewEventTable td, #editEventTable td:not(:last-child) {
-        font-size: initial;
-        padding-right: 2em;
+    #editTable .form-control-sm,
+    #editTable .form-select-sm {
+        font-size: inherit;
+        min-height: 0;
+        padding: 1px 2px;
+        line-height: 1.2;
     }
 
-    .viewOpponentTd {
-        text-wrap: nowrap
+    #editTable .form-select-sm {
+        padding-right: 1.25rem;
+        background-position: right 0.25rem center;
     }
 
-    .switch {
-        scale: 0.7
+
+    #editTable .editDateTimeTd input[type="date"],
+    #editTable .editDateTimeTd input[type="time"] {
+        width: 4rem;
+        text-align: left;
     }
 
-    button {
-        scale: 0.7
-    } 
+    #editorActions #pwInput,
+    #editorActions #submitEvents {
+        font-size: inherit;
+        min-height: 0;
+        padding: 0;
+        line-height: 1.2;
+    }
+
+    #addRowButton,
+    #submitEvents,
+    #editTable .deleteButton {
+        width: 1rem;
+        height: 1rem;
+        padding: 0;
+        font-size: inherit;
+        line-height: 1;
+    }
+
+    #editTable th:nth-child(5) {
+        width: 1rem;
+    }
+
+    #editTable .editDateTimeTd .d-flex,
+    #editTable .editLocationLeagueTd .d-flex,
+    #editTable .editScouterTd .d-flex {
+        gap: 2px !important;
+    }
+
+    #assignmentSummary {
+        padding: 2px;
+    }
+
+    #assignmentSummaryTable {
+        min-width: 27rem;
+    }
 }
 
 @media print {
-    #editDiv, br {
-        display: none;
+    #container {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
     }
 
-    table, table select {
-        font-size: initial;
-        width: initial;
-        table-layout: initial;
+    #eventTable,
+    #editTable {
+        min-width: auto;
+        width: 100%;
     }
 
-    .viewOpponentTd {
-        text-wrap: nowrap
+    #toastContainer,
+    #appFooter,
+    #assignmentSummary,
+    #editTable #deleteButtonColumn,
+    #editTable .deleteButtonTd,
+    #eventView .d-print-none {
+        display: none !important;
     }
 
-    .editOpponentTd {
-        text-wrap: nowrap
+    #editTable .form-control,
+    #editTable .form-select {
+        padding: 0;
+        color: inherit;
+        background-color: transparent;
+        border: 0;
     }
 
-    .past {
-        color: initial;
+    #eventTable .past {
+        color: inherit;
     }
 }

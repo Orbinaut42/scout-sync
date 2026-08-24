@@ -4,28 +4,108 @@ from configparser import ConfigParser
 
 CONFIG_FILE = 'scout_sync.cfg'
 
-config = ConfigParser(
-    converters={'list': lambda line: [
-        int(v)
-        if v.isdigit()
-        else v
-        for v in [w.strip() for w in line.split(',')]]},
-    interpolation=None)
-config.optionxform = str
-config.read(os.path.join(__path__[0], CONFIG_FILE), encoding='utf8')
 
-# read email adresses and calendar auth infos from environment variables for Replit compatibility
-for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
-    if not config.has_option('EMAILS', name):
-        config['EMAILS'][name] = email
+class Config:
+    """Provides application configuration values."""
 
-if not config.get('COMMON', 'submit_pw', fallback=None):
-    config['COMMON']['submit_pw'] = os.getenv('SUBMIT_PW', default='')
+    def __init__(self, config_file):
+        config_parser = ConfigParser(
+            converters={'list': lambda line: [
+                int(v)
+                if v.isdigit()
+                else v
+                for v in [w.strip() for w in line.split(',')]]},
+            interpolation=None)
+        config_parser.optionxform = str
+        config_parser.read(os.path.join(__path__[0], config_file), encoding='utf8')
 
-if not config.get('GOOGLE_API', 'oauth_info', fallback=None):
-    config['GOOGLE_API']['oauth_info'] = os.getenv('OAUTH_INFO', default='')
+        # read email adresses and calendar auth infos from environment variables
+        for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
+            if not config_parser.has_option('EMAILS', name):
+                config_parser['EMAILS'][name] = email
 
-if not config.get('GOOGLE_API', 'service_account_info', fallback=None):
-    config['GOOGLE_API']['service_account_info'] = os.getenv('SERVICE_ACCOUNT_INFO', default='')
+        if not config_parser.get('COMMON', 'submit_pw', fallback=None):
+            config_parser['COMMON']['submit_pw'] = os.getenv(
+                'SUBMIT_PW', default='')
+
+        if not config_parser.get('GOOGLE_API', 'oauth_info', fallback=None):
+            config_parser['GOOGLE_API']['oauth_info'] = os.getenv(
+                'OAUTH_INFO', default='')
+
+        if not config_parser.get('GOOGLE_API', 'service_account_info', fallback=None):
+            config_parser['GOOGLE_API']['service_account_info'] = os.getenv(
+                'SERVICE_ACCOUNT_INFO', default='')
+
+        self._config_parser = config_parser
+
+    @property
+    def log_file(self):
+        return self._config_parser.get('COMMON', 'log_file')
+
+    @property
+    def timezone(self):
+        return self._config_parser.get('COMMON', 'timezone')
+
+    @property
+    def title(self):
+        return self._config_parser.get('COMMON', 'title')
+
+    @property
+    def port(self):
+        return self._config_parser.getint('COMMON', 'port')
+
+    @property
+    def schedule_request_timeout(self):
+        return self._config_parser.getint('COMMON', 'schedule_request_timeout')
+
+    @property
+    def web_cache_file(self):
+        return self._config_parser.get('COMMON', 'web_cache_file')
+
+    @property
+    def submit_pw(self):
+        return self._config_parser.get('COMMON', 'submit_pw')
+
+    @property
+    def simulate(self):
+        return self._config_parser.getboolean('COMMON', 'simulate')
+
+    @property
+    def oauth_info(self):
+        return self._config_parser.get('GOOGLE_API', 'oauth_info', fallback=None)
+
+    @property
+    def service_account_info(self):
+        return self._config_parser.get(
+            'GOOGLE_API', 'service_account_info', fallback=None)
+
+    @property
+    def calendar_id(self):
+        return self._config_parser.get('CALENDAR', 'id')
+
+    @property
+    def schedule_leagues(self):
+        return [
+            dict(zip(
+                ['league_name', 'league_id', 'team_permanent_id', 'team_season_id'],
+                self._config_parser.getlist('SCHEDULE_LEAGUES', name)))
+            for name, _ in self._config_parser.items('SCHEDULE_LEAGUES')]
+
+    @property
+    def schedule_arenas(self):
+        return dict(self._config_parser.items('SCHEDULE_ARENAS'))
+
+    @property
+    def emails(self):
+        return dict(self._config_parser.items('EMAILS'))
+
+    @property
+    def sync_interval(self):
+        if not self._config_parser.has_section('SYNC_JOB'):
+            return None
+        return self._config_parser.getint('SYNC_JOB', 'interval', fallback=None)
+
+
+config = Config(CONFIG_FILE)
 
 __all__ = ['config']

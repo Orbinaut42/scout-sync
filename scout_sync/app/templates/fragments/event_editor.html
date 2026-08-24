@@ -1,0 +1,31 @@
+<section id="eventEditor" aria-label="Spiele bearbeiten">
+  {% include "fragments/toast.html" %}
+
+  <form id="eventForm"
+        method="post"
+        action="/list/edit"
+        hx-post="/list/edit"
+        hx-target="#content"
+        hx-swap="innerHTML"
+        hx-on::after-request="document.getElementById('pwInput').value = ''">
+    <div class="table-responsive">
+      <table id="editTable" class="table table-sm table-striped align-middle">
+        <thead class="table-light">
+          <tr>
+            <th id="editDateTimeColumn" scope="col">Datum</th>
+            <th id="editLocationLeagueColumn" scope="col">Halle / Liga</th>
+            <th id="editOpponentColumn" scope="col">Gegner</th>
+            <th id="editScouterColumn" scope="col">Scouter</th>
+            <th id="deleteButtonColumn" scope="col"><span class="visually-hidden">Aktionen</span></th>
+          </tr>
+        </thead>
+         <tbody id="editEventTable"
+           hx-on::after-swap="this.lastElementChild?.scrollIntoView({ block: 'nearest' })">
+          {% for event in events %}
+            {% include "fragments/event_row.html" %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+</section>
