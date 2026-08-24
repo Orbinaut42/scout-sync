@@ -177,6 +177,7 @@ def _edit_submit():
     def validate_scouters(values):
         """Validate and normalize submitted scouter names."""
 
+        values = [value for value in values if value]
         unknown = sorted(set(values) - set(Event._emails))
         if unknown:
             raise ValueError('Unbekannter Scouter im Änderungsantrag.')

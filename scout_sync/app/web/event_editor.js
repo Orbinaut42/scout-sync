@@ -181,7 +181,7 @@
           const values = controlsFor(row, field)
             .map((control) => control.value)
             .filter((value) => value !== '')
-          setParameter(parameters, key, values)
+          setParameter(parameters, key, values.length > 0 ? values : [''])
         } else {
           setParameter(
             parameters,

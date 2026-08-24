@@ -100,6 +100,8 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     assert 'name="event_ids"' not in editor_body
     assert 'data-event-field="date"' in editor_body
     assert 'data-original-scouters=' in editor_body
+    assert "data-original-scouters='[\"Alice\"]'" in editor_body
+    assert "data-original-scouters='[\"Bob\"]'" in editor_body
     assert summary_script.status_code == 200
     assert 'leagueCategory' in summary_script.get_data(as_text=True)
     assert editor_script.status_code == 200
@@ -240,6 +242,26 @@ def test_scouters_only_patch_preserves_other_fields_and_schedule_info(app_env):
     assert saved['dbb-early']['schedule_info'] == {
         'match_id': 'match-1',
         'league_id': 'league-1'}
+    assert len(app_env['scheduler'].jobs) == 1
+
+
+def test_empty_scouter_patch_clears_scouters_without_replacing_event(app_env):
+    write_cache(app_env['cache_file'], cached_events())
+
+    response = app_env['client'].post(
+        '/list/edit',
+        data=MultiDict([
+            ('password', 'secret'),
+            ('events[manual-late][operation]', 'update'),
+            ('events[manual-late][scouters]', '')]))
+
+    saved = {
+        event['id']: event
+        for event in json.loads(
+            app_env['cache_file'].read_text(encoding='utf8'))}
+    assert response.status_code == 200
+    assert saved['manual-late']['location'] == '<b>Late</b>'
+    assert saved['manual-late']['scouters'] == []
     assert len(app_env['scheduler'].jobs) == 1
 
 

@@ -54,7 +54,7 @@ class Event:
         schedule_info = {
                 'match_id': event_extended_properties.get('matchId'),
                 'league_id': event_extended_properties.get('leagueId')}
-        if schedule_info['match_id'] is None and schedule_info['match_id'] is None:
+        if schedule_info['match_id'] is None or schedule_info['league_id'] is None:
             schedule_info = None
 
         scouter_list = []
@@ -102,7 +102,7 @@ class Event:
             opponent = None
 
         e = cls(
-            id=f"{event['ligaData']['verbandId']}_{event['matchNo']}",
+            id=f"{event['ligaData']['seasonId']}_{event['ligaData']['verbandId']}_{event['matchNo']}",  # noqa: E501
             datetime=datetime,
             location=location,
             league=league_name,

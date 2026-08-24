@@ -12,7 +12,7 @@
     data-original-location="{{ event.location or '' }}"
     data-original-league="{{ event.league or '' }}"
     data-original-opponent="{{ event.opponent or '' }}"
-    data-original-scouters="{{ event_scouters | sort | tojson }}">
+    data-original-scouters='{{ event_scouters | sort | tojson }}'>
   <td class="editDateTimeTd">
     <div class="d-flex flex-column gap-1">
       <input class="form-control form-control-sm"
