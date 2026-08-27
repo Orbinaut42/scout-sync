@@ -88,6 +88,25 @@
     }
   }
 
+  function setPasswordVisibility(visible) {
+    const password = document.getElementById('pwInput')
+    const toggle = document.getElementById('passwordVisibilityToggle')
+    if (!password || !toggle) {
+      return
+    }
+
+    password.type = visible ? 'text' : 'password'
+    const label = visible ? 'Passwort verbergen' : 'Passwort anzeigen'
+    toggle.setAttribute('aria-label', label)
+    toggle.setAttribute('aria-pressed', String(visible))
+    toggle.title = label
+
+    const labelText = document.getElementById('passwordVisibilityText')
+    if (labelText) {
+      labelText.textContent = label
+    }
+  }
+
   function rowHasValue(row) {
     for (const field of scalarFields) {
       const control = controlsFor(row, field)[0]
@@ -216,6 +235,13 @@
       return
     }
 
+    const passwordToggle = target.closest('#passwordVisibilityToggle')
+    if (passwordToggle) {
+      const password = document.getElementById('pwInput')
+      setPasswordVisibility(password?.type !== 'text')
+      return
+    }
+
     const button = target.closest('.deleteButton')
     const row = button?.closest('tr[data-game-id]')
     if (!row) {
@@ -262,5 +288,6 @@
 
     pending.clear()
     updateSubmitState()
+    setPasswordVisibility(false)
   })
 })()

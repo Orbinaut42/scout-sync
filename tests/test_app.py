@@ -41,11 +41,13 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     editor = client.get('/list/edit')
     summary_script = client.get('/list/assignment_summary.js')
     editor_script = client.get('/list/event_editor.js')
+    toast_script = client.get('/list/toast.js')
 
     assert page.status_code == 200
     page_body = page.get_data(as_text=True)
     assert 'bootstrap-5.3.3.min.css' in page_body
     assert 'htmx-2.0.4.min.js' in page_body
+    assert 'toast.js' in page_body
     assert 'assignment_summary.js' in page_body
     assert 'event_editor.js' in page_body
     assert 'hx-on:edit-mode-saved=' in page_body
@@ -59,7 +61,9 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     assert '<section id="assignmentSummary"' in page_body
     assert 'id="assignmentSummaryTable"' in page_body
     assert 'id="assignmentSummaryBody"' in page_body
-    assert 'BBL / Eurocup' in page_body
+    assert 'id="passwordVisibilityToggle"' in page_body
+    assert 'aria-controls="pwInput"' in page_body
+    assert 'BBL / Euro' in page_body
     assert '>ProA<' in page_body
     assert '>Sonstige<' in page_body
     assert '>Gesamt<' in page_body
@@ -106,6 +110,9 @@ def test_page_and_fragments_render_sorted_escaped_and_locked(app_env):
     assert 'leagueCategory' in summary_script.get_data(as_text=True)
     assert editor_script.status_code == 200
     assert 'htmx:configRequest' in editor_script.get_data(as_text=True)
+    assert 'setPasswordVisibility' in editor_script.get_data(as_text=True)
+    assert toast_script.status_code == 200
+    assert 'htmx:load' in toast_script.get_data(as_text=True)
 
     manual_row = editor_body.split('data-game-id="manual-late"', 1)[1].split('</tr>', 1)[0]
     dbb_row = editor_body.split('data-game-id="dbb-early"', 1)[1].split('</tr>', 1)[0]
@@ -126,7 +133,6 @@ def test_empty_cache_feedback_targets_footer(app_env):
     assert 'Es sind noch keine Spieltermine verfügbar.' in body
     assert '<section id="eventView"' in body
     assert 'class="toast show text-bg-warning"' in body
-    assert 'setTimeout(() => this.remove(), 5000)' in body
 
 
 def test_new_manual_row_has_unique_server_id_and_three_scouters(app_env):

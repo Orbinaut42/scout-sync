@@ -12,8 +12,7 @@
     <div class="toast show text-bg-{{ alert_kind }}"
          role="alert"
          aria-live="assertive"
-         aria-atomic="true"
-         hx-on::load="setTimeout(() => this.remove(), 5000)">
+         aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body">{{ feedback.message }}</div>
         <button type="button"

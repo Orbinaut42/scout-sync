@@ -17,7 +17,7 @@ body {
 }
 
 #eventEditor > form > .table-responsive {
-    max-height: calc(100vh - 2rem);
+    max-height: calc(100vh - 5rem);
 }
 
 #eventTable thead,
@@ -104,12 +104,13 @@ body {
 
 #footerActions {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
 }
 
 #viewActions {
-    gap: 0.75rem;
+    gap: 1.5rem;
 }
 
 #viewActions .form-switch {
@@ -151,7 +152,8 @@ body {
 
 body:has(#eventEditor) #editorActions {
     display: flex !important;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
+    width: 100%;
     min-width: 0;
 }
 
@@ -165,7 +167,6 @@ body:has(#eventEditor) #assignmentSummaryActions {
 
 #assignmentSummary {
     flex: 0 0 auto;
-    /*margin-top: 0.5rem;*/
     padding: 0.5rem;
     border: 1px solid var(--bs-border-color);
     border-radius: var(--bs-border-radius);
@@ -183,8 +184,11 @@ body:not(:has(#eventEditor)) #assignmentSummary {
     overflow-y: auto;
 }
 
-#assignmentSummaryTable {
-    min-width: 32rem;
+#assignmentSummaryTable th:nth-child(2),
+#assignmentSummaryTable th:nth-child(3),
+#assignmentSummaryTable th:nth-child(4),
+#assignmentSummaryTable th:nth-child(5) {
+    width: 18%;
 }
 
 #assignmentSummaryTable th,
@@ -213,10 +217,34 @@ body:not(:has(#eventEditor)) #assignmentSummary {
     color: var(--bs-primary);
     background-color: var(--bs-white);
     border-color: var(--bs-primary);
+    margin-left: auto;
+}
+
+#submitEvents:hover {
+    color: var(--bs-btn-hover-color);
+    background-color: var(--bs-btn-hover-bg);
+    border-color: var(--bs-btn-hover-border-color);
+}
+
+#toggleGroup,
+#passwordInputGroup {
+    width: 12rem;
+}
+
+#passwordVisibilityToggle {
+    width: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #addRowButton {
+    display: none;
     margin-left: auto;
+}
+
+body:has(#eventEditor) #addRowButton {
+    display: inline-flex;
 }
 
 @media only screen and (max-width: 991px) {
@@ -241,7 +269,6 @@ body:not(:has(#eventEditor)) #assignmentSummary {
         background-position: right 0.25rem center;
     }
 
-
     #editTable .editDateTimeTd input[type="date"],
     #editTable .editDateTimeTd input[type="time"] {
         width: 4rem;
@@ -249,11 +276,16 @@ body:not(:has(#eventEditor)) #assignmentSummary {
     }
 
     #editorActions #pwInput,
+    #editorActions #passwordVisibilityToggle,
     #editorActions #submitEvents {
         font-size: inherit;
         min-height: 0;
         padding: 0;
         line-height: 1.2;
+    }
+
+    #editorActions #passwordVisibilityToggle {
+        width: 1.5rem;
     }
 
     #addRowButton,
@@ -278,10 +310,6 @@ body:not(:has(#eventEditor)) #assignmentSummary {
 
     #assignmentSummary {
         padding: 2px;
-    }
-
-    #assignmentSummaryTable {
-        min-width: 27rem;
     }
 }
 
