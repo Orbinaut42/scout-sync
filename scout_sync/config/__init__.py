@@ -36,6 +36,22 @@ class Config:
             config_parser['GOOGLE_API']['service_account_info'] = os.getenv(
                 'SERVICE_ACCOUNT_INFO', default='')
 
+        if not config_parser.get('CALDAV', 'url', fallback=None):
+            config_parser['CALDAV']['url'] = os.getenv(
+                'CALDAV_URL', default='')
+
+        if not config_parser.get('CALDAV', 'calendar_name', fallback=None):
+            config_parser['CALDAV']['calendar_name'] = os.getenv(
+                'CALDAV_CALENDAR_NAME', default='')
+
+        if not config_parser.get('CALDAV', 'username', fallback=None):
+            config_parser['CALDAV']['username'] = os.getenv(
+                'CALDAV_USERNAME', default='')
+
+        if not config_parser.get('CALDAV', 'password', fallback=None):
+            config_parser['CALDAV']['password'] = os.getenv(
+                'CALDAV_PASSWORD', default='')
+
         self._config_parser = config_parser
 
     @property
@@ -82,6 +98,22 @@ class Config:
     @property
     def calendar_id(self):
         return self._config_parser.get('CALENDAR', 'id')
+
+    @property
+    def caldav_url(self):
+        return self._config_parser.get('CALDAV', 'url', fallback=None)
+
+    @property
+    def caldav_calendar_name(self):
+        return self._config_parser.get('CALDAV', 'calendar_name', fallback=None)
+
+    @property
+    def caldav_username(self):
+        return self._config_parser.get('CALDAV', 'username', fallback=None)
+
+    @property
+    def caldav_password(self):
+        return self._config_parser.get('CALDAV', 'password', fallback=None)
 
     @property
     def schedule_leagues(self):

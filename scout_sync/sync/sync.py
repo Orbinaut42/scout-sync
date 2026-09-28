@@ -4,6 +4,7 @@ import arrow
 import json
 import time
 from .google_api import GoogleCalendarAPI
+from caldav.davclient import get_davclient
 from ..config import config
 
 logging.basicConfig(
@@ -74,6 +75,37 @@ class Event:
             location=event.get('location', None),
             league=event.get('summary', '').replace('Scouting ', '') or None,
             opponent=event.get('description', None),
+            scouters=scouter_list,
+            schedule_info=schedule_info)
+
+        return e
+
+    @classmethod
+    def from_vevent(cls, event):
+        scouter_list = []
+        for a in event.get('attendee', []):
+            # if a['responseStatus'] == 'declined':
+            #     continue
+
+            email = str(a).replace('mailto:', '')
+            try:
+                scouter_list.append(cls.__names[email])
+            except KeyError:
+                logging.warning(
+                    f"Unknown email in calendar event at {event.get('dtstart').dt}: {email}")
+
+        schedule_info = {
+                'match_id': event.get('x-match-id'),
+                'league_id': event.get('x-league-id')}
+        if schedule_info['match_id'] is None and schedule_info['match_id'] is None:
+            schedule_info = None
+
+        e = cls(
+            id=str(event.get('x-match-id')),
+            datetime=arrow.get(event.get('dtstart').dt),
+            location=str(event.get('location')) or None,
+            league=str(event.get('summary', '')).replace('Scouting ', '') or None,
+            opponent=str(event.get('description')) or None,
             scouters=scouter_list,
             schedule_info=schedule_info)
 
@@ -306,6 +338,35 @@ class CalendarHandler(GoogleCalendarAPI):
                 events.append(event)
 
         return events
+
+
+class CalDavHandler():
+    """Manages the communication with a CalDAV API"""
+
+    def __init__(self):
+        self._calendar = None
+        self._ids = None
+
+    def connect(self):
+        client = get_davclient(
+            url=config.caldav_url,
+            username=config.caldav_username,
+            password=config.caldav_password)
+
+        self._calendar = client.principal().calendar()
+        return client
+
+    def add_events(self, events):
+        pass
+
+    def update_events(self, events):
+        pass
+
+    def delete_events(self, events):
+        pass
+
+    def list_events(self):
+        pass
 
 
 class ScheduleHandler:
