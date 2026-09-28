@@ -9,6 +9,14 @@
 - For games from the DBB schedule only assigning scouters is allowed, for manually created games all properties can be edited.
 - The edits from the UI are synced back to the calendar, the scouters are added as attendants in the calendar events.
 
+## Migration scope
+
+- Currently the project uses a Google calendar for sending invites as well as the database for the events.
+- The event database needs to be migrated to MariaDB.
+- Invites need to be sent through a WebDAV calendar. This is the calendars only purpose.
+- Most configuration can eventually also be moved from the config file to the database.
+- After the migration is completed, Google support can be dropped.
+
 ## Project shape
 
 - The main synchronization orchestration and `Event` conversion model are in [scout_sync/sync/sync.py](scout_sync/sync/sync.py).
@@ -36,7 +44,6 @@
 - Runtime paths such as the log and web-cache files come from the `[COMMON]` configuration section; do not hard-code them.
 - The sync flow has external side effects: Google Calendar writes, DBB HTTP requests, and cache writes. Prefer `simulate` mode or cache input before testing behavior that mutates remote data.
 - Preserve event identifiers and `schedule_info`; they are used to correlate DBB records with Google Calendar records and to decide whether events are added, updated, or deleted.
-- When the user prompt is ambiguous or multiple equivalent options appear, ask the user for clarification, instead of guessing the desired approach.
 
 ## Implementation conventions
 
@@ -45,9 +52,10 @@
 - Use the existing module-level logging style and explicit UTF-8 for JSON/file I/O.
 - Preserve timezone-aware `arrow` values and the configured timezone when creating or parsing events.
 - When changing event fields or serialization, review all `Event.from_*` and `Event.as_*` conversions plus calendar diffing in `sync()`.
-- For web changes, keep the Jinja + HTMX table/edit flow and Bootstrap markup. Verify `GET /list/hx/events`, `GET /list/hx/edit`, `GET /list/hx/edit/row`, and `POST /list/hx/edit` behavior, including validation and password feedback. The old `/list/events` and `/list/edit` JSON browser endpoints are removed.
+- For web changes, keep the Jinja + HTMX table/edit flow and Bootstrap markup. Verify `GET /list/hx/events`, `GET /list/hx/edit`, `GET /list/hx/edit/row`, and `POST /list/hx/edit` behavior, including validation and password feedback.
 - Avoid broad refactors unless requested; this code integrates with remote APIs and relies on configuration-driven behavior.
 - When adding or updating docstrings, only describe what the function is currently doing, not why it was changed.
 - Avoid creating helper functions that only wrap a few lines of code, if that helper is only called in one place. If helper fuctions are needed, implement them in the most local context possible.
-- Insert a blank line when the indetation level decreases in Python code
+- When parts of the prompt are ambiguous, or when closely following the users instruction would mean large refactors or additions for small edge-cases, confirm with the user before implementing changes.
+- Insert a blank line when the indetation level decreases in Python code.
 - Don't put a semicolon at the end of lines in JavaScript code.

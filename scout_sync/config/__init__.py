@@ -87,6 +87,13 @@ class Config:
         return self._config_parser.getboolean('COMMON', 'simulate')
 
     @property
+    def calendar_backend(self):
+        backend = self._config_parser.get(
+            'COMMON', 'calendar_backend', fallback='caldav').strip().lower()
+
+        return backend
+
+    @property
     def oauth_info(self):
         return self._config_parser.get('GOOGLE_API', 'oauth_info', fallback=None)
 
