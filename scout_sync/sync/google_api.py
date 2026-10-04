@@ -10,14 +10,12 @@ from ..config import config
 class _GoogleAPI:
     """Base class for the Google API functionality"""
 
-    def __init__(self, resource_id, timezone, simulate):
+    def __init__(self, resource_id, timezone):
         """resource_id -> string Id of the calendar, spreadsheet, ...
-        timezone -> string timezone for calendar event creation
-        simulate -> bool whether the syncronisations should only be simulated (for testing)"""
+        timezone -> string timezone for calendar event creation"""
         self._resource_id = resource_id
         self._service = None
         self._timezone = timezone
-        self._simulate = simulate
 
     def create_service(self, api_name, api_version):
         """Creates the Google API service ressource
@@ -56,8 +54,8 @@ class _GoogleAPI:
 class GoogleCalendarAPI(_GoogleAPI):
     """Convenience class for Google Calendar API functionalities"""
 
-    def __init__(self, calendar_id, timezone, simulate=False):
-        super().__init__(calendar_id,  timezone, simulate)
+    def __init__(self, calendar_id, timezone):
+        super().__init__(calendar_id, timezone)
 
     def _connect_to_service(self):
         """Creates the service and tests the connection"""
@@ -97,8 +95,7 @@ class GoogleCalendarAPI(_GoogleAPI):
             body=event,
             sendUpdates=('all' if date > now else 'none'))
 
-        if not self._simulate:
-            act.execute()
+        act.execute()
 
     def _update_event(self, id, event, old_event):
         """Updates the event with the specified ID
@@ -113,8 +110,7 @@ class GoogleCalendarAPI(_GoogleAPI):
             body=event,
             sendUpdates='all' if old_date > now or new_date > now else 'none')
 
-        if not self._simulate:
-            act.execute()
+        act.execute()
 
     def _delete_event(self, id, event):
         """Deletes the specified event"""
@@ -126,15 +122,14 @@ class GoogleCalendarAPI(_GoogleAPI):
             eventId=id,
             sendUpdates='all' if date > now else 'none')
 
-        if not self._simulate:
-            act.execute()
+        act.execute()
 
 
 class GoogleSheetsAPI(_GoogleAPI):
     """Convenience class for Google Sheets API functionalities"""
 
-    def __init__(self, spreadsheet_id, sheet_name, sheet_id, timezone, simulate=False):
-        super().__init__(spreadsheet_id, timezone, simulate)
+    def __init__(self, spreadsheet_id, sheet_name, sheet_id, timezone):
+        super().__init__(spreadsheet_id, timezone)
         self._sheet_name = sheet_name or None
         self._sheet_id = sheet_id or 0
 
@@ -260,8 +255,7 @@ class GoogleSheetsAPI(_GoogleAPI):
             spreadsheetId=self._resource_id,
             body=body)
 
-        if not self._simulate:
-            act.execute()
+        act.execute()
 
     def _range_descriptor(self, start, end=None):
         """Returns a range descriptor string

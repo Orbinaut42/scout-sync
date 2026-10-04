@@ -4,9 +4,9 @@ import requests
 import arrow
 import json
 import time
-import icalendar
+import vobject
 from .google_api import GoogleCalendarAPI
-from caldav.davclient import get_davclient
+from caldav.davclient import get_calendar  # get_davclient
 from ..config import config
 
 logging.basicConfig(
@@ -16,9 +16,6 @@ logging.basicConfig(
     level=logging.INFO)
 
 logging.getLogger('googleapiclient').setLevel(logging.ERROR)
-
-TIMEZONE = config.timezone
-SIMULATE = config.simulate
 
 
 class Event:
@@ -84,26 +81,22 @@ class Event:
 
     @classmethod
     def from_vevent(cls, event):
-        """Create an event from an icalendar VEVENT component"""
+        """Create an event from a vobject VEVENT component"""
 
-        def values(prop):
-            value = event.get(prop)
-            if value is None:
-                return []
-            if isinstance(value, list):
-                return value
-            return [value]
-
-        uid = event.get('uid')
-        if uid is None:
-            dtstart = event.get('dtstart')
+        uid_props = event.contents.get('uid')
+        dtstart_props = event.contents.get('dtstart')
+        dt = dtstart_props[0].value if dtstart_props else None
+        if not uid_props:
             logging.warning(
-                f"Invalid event at {dtstart.dt if dtstart else 'unknown time'}")
+                f"Invalid event at {dt if dt else 'unknown time'}")
             return
+        uid = uid_props[0].value
 
+        x_match = event.contents.get('x-match-id')
+        x_league = event.contents.get('x-league-id')
         schedule_info = {
-                'match_id': event.get('x-match-id'),
-                'league_id': event.get('x-league-id')}
+                'match_id': x_match[0].value if x_match else None,
+                'league_id': x_league[0].value if x_league else None}
         if schedule_info['match_id'] is None or schedule_info['league_id'] is None:
             schedule_info = None
         else:
@@ -112,12 +105,13 @@ class Event:
                 'league_id': str(schedule_info['league_id'])}
 
         scouter_list = []
-        for a in values('attendee'):
-            partstat = str(a.params.get('PARTSTAT') or '').upper()
+        for a in event.contents.get('attendee', []):
+            partstat_vals = a.params.get('PARTSTAT') or []
+            partstat = str(partstat_vals[0] if partstat_vals else '').upper()
             if partstat == 'DECLINED':
                 continue
 
-            email = str(a)
+            email = str(a.value)
             if email.lower().startswith('mailto:'):
                 email = email[7:]
 
@@ -125,24 +119,22 @@ class Event:
                 scouter_list.append(cls._names[email])
             except KeyError:
                 logging.warning(
-                    f"Unknown email in calendar event at {event.get('dtstart').dt}: {email}")
+                    f"Unknown email in calendar event at {dt}: {email}")
 
-        dtstart = event.get('dtstart')
-        dt = dtstart.dt if dtstart is not None else None
         if isinstance(dt, datetime.datetime):
             if dt.tzinfo is None:
-                event_datetime = arrow.Arrow.fromdatetime(dt, tzinfo=TIMEZONE)
+                event_datetime = arrow.Arrow.fromdatetime(dt, tzinfo=config.timezone)
             else:
                 event_datetime = arrow.get(dt)
         elif dt is not None:
             event_datetime = arrow.Arrow.fromdatetime(
-                datetime.datetime.combine(dt, datetime.time()), tzinfo=TIMEZONE)
+                datetime.datetime.combine(dt, datetime.time()), tzinfo=config.timezone)
         else:
             event_datetime = None
 
         def text(prop):
-            value = event.get(prop)
-            return None if value is None else str(value)
+            props = event.contents.get(prop)
+            return None if not props else str(props[0].value)
 
         league = text('summary') or ''
         e = cls(
@@ -160,9 +152,11 @@ class Event:
     def from_DBB_schedule(cls, event, league_name):
         """Create an event from a JSON object (DBB schedule)"""
         try:
-            datetime = arrow.get(f"{event['kickoffDate']}T{event['kickoffTime']}", tzinfo=TIMEZONE)
+            datetime = arrow.get(
+                f"{event['kickoffDate']}T{event['kickoffTime']}",
+                tzinfo=config.timezone)
         except Exception:
-            datetime = arrow.get(2147483648, tzinfo=TIMEZONE)
+            datetime = arrow.get(2147483648, tzinfo=config.timezone)
 
         try:
             location_id = event['matchInfo']['spielfeld']['id']
@@ -194,7 +188,7 @@ class Event:
     def from_json(cls, event):
         """create an event from a json object"""
 
-        datetime = arrow.get(event.get('datetime'), tzinfo=TIMEZONE)
+        datetime = arrow.get(event.get('datetime'), tzinfo=config.timezone)
         scouter_list = []
         for scouter_name in event.get('scouters') or []:
             if not scouter_name:
@@ -229,11 +223,11 @@ class Event:
 
         event['start'] = {
             'dateTime': self.datetime.isoformat(),
-            'timeZone': TIMEZONE
+            'timeZone': config.timezone
         }
         event['end'] = {
             'dateTime': self.datetime.shift(hours=2).isoformat(),
-            'timeZone': TIMEZONE
+            'timeZone': config.timezone
         }
 
         event['location'] = self.location
@@ -264,33 +258,41 @@ class Event:
         return event
 
     def as_vevent(self, sequence=0, notify=True):
-        """create an icalendar VEVENT component for the CalDAV API
+        """create a vobject VEVENT component for the CalDAV API
         sequence -> int iCalendar SEQUENCE number
         notify -> bool whether attendees should get an invitation (future events)"""
 
-        event = icalendar.Event()
-        event.add('uid', self.id)
-        event.add('sequence', sequence)
+        event = vobject.iCalendar().add('vevent')
+        event.add('uid').value = self.id
+        event.add('sequence').value = str(sequence)
 
-        start = self.datetime.to(TIMEZONE)
-        event.add('dtstart', start.datetime)
-        event.add('dtend', start.shift(hours=2).datetime)
+        start = self.datetime.to(config.timezone)
+        dtstart = event.add('dtstart')
+        dtstart.value = start.datetime.replace(tzinfo=None)
+        dtstart.params['TZID'] = [config.timezone]
+        dtend = event.add('dtend')
+        dtend.value = start.shift(hours=2).datetime.replace(tzinfo=None)
+        dtend.params['TZID'] = [config.timezone]
 
-        event.add('summary', 'Scouting ' + (self.league or ''))
+        event.add('summary').value = 'Scouting ' + (self.league or '')
         if self.location is not None:
-            event.add('location', self.location)
+            event.add('location').value = self.location
         if self.opponent is not None:
-            event.add('description', self.opponent)
+            event.add('description').value = self.opponent
 
         if self.schedule_info:
-            event.add('x-match-id', self.schedule_info.get('match_id'))
-            event.add('x-league-id', self.schedule_info.get('league_id'))
+            match_id = self.schedule_info.get('match_id')
+            league_id = self.schedule_info.get('league_id')
+            if match_id is not None:
+                event.add('x-match-id').value = str(match_id)
+            if league_id is not None:
+                event.add('x-league-id').value = str(league_id)
 
         organizer = config.caldav_username
         if organizer and '@' in organizer:
-            org = icalendar.vCalAddress(f'mailto:{organizer}')
-            org.params['cn'] = organizer
-            event.add('organizer', org, encode=0)
+            org = event.add('organizer')
+            org.value = f'mailto:{organizer}'
+            org.params['CN'] = [organizer]
 
         if self.scouters is not None:
             partstat = 'NEEDS-ACTION' if notify else 'ACCEPTED'
@@ -301,19 +303,18 @@ class Event:
                     logging.warning(f"Unknown scouter name in event at {self.datetime}: {scouter_name}")  # noqa: E501
 
                 if email not in [None, '']:
-                    attendee = icalendar.vCalAddress(f'mailto:{email}')
-                    attendee.params['cn'] = scouter_name
-                    attendee.params['cutype'] = 'INDIVIDUAL'
-                    attendee.params['role'] = 'REQ-PARTICIPANT'
-                    attendee.params['partstat'] = partstat
-                    attendee.params['rsvp'] = rsvp
-                    event.add('attendee', attendee, encode=0)
+                    attendee = event.add('attendee')
+                    attendee.value = f'mailto:{email}'
+                    attendee.params['CN'] = [scouter_name]
+                    attendee.params['CUTYPE'] = ['INDIVIDUAL']
+                    attendee.params['ROLE'] = ['REQ-PARTICIPANT']
+                    attendee.params['PARTSTAT'] = [partstat]
+                    attendee.params['RSVP'] = [rsvp]
 
-        alarm = icalendar.Alarm()
-        alarm.add('action', 'DISPLAY')
-        alarm.add('trigger', datetime.timedelta(minutes=-360))
-        alarm.add('description', 'Scouting')
-        event.add_component(alarm)
+        alarm = event.add('valarm')
+        alarm.add('action').value = 'DISPLAY'
+        alarm.add('trigger').value = datetime.timedelta(minutes=-360)
+        alarm.add('description').value = 'Scouting'
 
         return event
 
@@ -361,7 +362,7 @@ class CalendarHandler(GoogleCalendarAPI):
     """Manages the communication with the Google Calendar API"""
 
     def __init__(self, calendar_id):
-        super().__init__(calendar_id, TIMEZONE, SIMULATE)
+        super().__init__(calendar_id, config.timezone)
         self._ids = None
 
     def connect(self):
@@ -387,8 +388,7 @@ class CalendarHandler(GoogleCalendarAPI):
                 continue
 
             self._insert_event(ev.as_calendar_event())
-            logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Added event to calendar:\n\t\t{ev}")
+            logging.info(f"Added event to calendar:\n\t\t{ev}")
 
     def update_events(self, events):
         if not self._service:
@@ -404,7 +404,7 @@ class CalendarHandler(GoogleCalendarAPI):
 
             self._update_event(cal_id, ev.as_calendar_event(), cal_ev)
             logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in calendar:\n\t-\t{old_ev}\n\t+\t{ev}")  # noqa: E501
+                f"Updated event in calendar:\n\t-\t{old_ev}\n\t+\t{ev}")
 
     def delete_events(self, events):
         if not self._service:
@@ -419,8 +419,7 @@ class CalendarHandler(GoogleCalendarAPI):
             old_ev = Event.from_calendar_event(cal_ev)
 
             self._delete_event(cal_id, cal_ev)
-            logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Deleted event in calendar:\n\t\t{old_ev}")
+            logging.info(f"Deleted event in calendar:\n\t\t{old_ev}")
 
     def list_events(self):
         if not self._service:
@@ -444,25 +443,38 @@ class CalDavHandler():
 
     def __init__(self, calendar_name):
         self._calendar_name = calendar_name
-        self._client = None
         self._calendar = None
-        self._ids = None
+        self._resources = None
 
     def connect(self):
-        try:
-            self._connect()
+        calendar = get_calendar(
+            url=config.caldav_url,
+            username=config.caldav_username,
+            password=config.caldav_password,
+            calendar_name=self._calendar_name)
 
-        except Exception as e:
+        if not calendar:
             logging.error(
-                f"Connection to CalDAV calendar {self._calendar_name} failed: {e}")
+                f"Connection to CalDAV calendar {self._calendar_name} failed")
 
             return False
 
+        if not calendar.client.supports_scheduling():
+            logging.warning(
+                f"CalDAV server does not support scheduling; "
+                f"invitations will not be sent for {self._calendar_name}")
+
+        self._calendar = calendar
+        self._resources = {
+            event.id: event
+            for event in self._calendar.get_events()}
+
         logging.info(f"Connected to calendar: {self._calendar_name}")
+
         return True
 
     def add_events(self, events):
-        if self._calendar is None:
+        if not self._is_connected():
             return
 
         for ev in events:
@@ -471,117 +483,85 @@ class CalDavHandler():
                 continue
 
             notify = self._should_notify(ev.datetime)
-            if not SIMULATE:
-                resource = self._calendar.add_event(
-                    self._as_calendar_ical(ev, sequence=0, notify=notify))
-                if self._ids is not None and resource is not None:
-                    self._ids[ev.id] = resource
+            resource = self._calendar.add_event(
+                self._as_calendar_ical(ev, sequence=0, notify=notify))
+            self._resources[ev.id] = resource
 
-            logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Added event to calendar:\n\t\t{ev}")
+            logging.info(f"Added event to calendar:\n\t\t{ev}")
 
     def update_events(self, events):
-        if self._calendar is None:
+        if not self._is_connected():
             return
 
         for ev in events:
-            resource = self._ids.get(ev.id) if self._ids is not None else None
+            resource = self._resources.get(ev.id)
+
             if resource is None:
                 raise ValueError(f"Can not update event {ev.id}: event is not in calendar!")
 
-            old_vevent = resource.get_icalendar_component()
+            old_vevent = resource.get_vobject_instance().vevent
             old_ev = Event.from_vevent(old_vevent)
-            sequence = int(old_vevent.get('sequence') or 0) + 1
+            seq_props = old_vevent.contents.get('sequence')
+            sequence = int(seq_props[0].value if seq_props else 0) + 1
             notify = self._should_notify(
                 old_ev.datetime if old_ev else None,
                 ev.datetime)
 
             resource.data = self._as_calendar_ical(ev, sequence=sequence, notify=notify)
-
-            if not SIMULATE:
-                resource.save(increase_seqno=False)
+            resource.save(increase_seqno=False)
 
             logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Updated event in calendar:\n\t-\t{old_ev}\n\t+\t{ev}")  # noqa: E501
+                f"Updated event in calendar:\n\t-\t{old_ev}\n\t+\t{ev}")
 
     def delete_events(self, events):
-        if self._calendar is None:
+        if not self._is_connected():
             return
 
         for ev in events:
-            resource = self._ids.get(ev.id) if self._ids is not None else None
+            resource = self._resources.get(ev.id)
+
             if resource is None:
                 raise ValueError(f"Can not delete event {ev.id}: event is not in calendar!")
 
-            old_vevent = resource.get_icalendar_component()
+            old_vevent = resource.get_vobject_instance().vevent
             old_ev = Event.from_vevent(old_vevent)
 
-            if not SIMULATE:
-                resource.delete()
+            resource.delete()
 
-            logging.info(
-                f"{'(SIMULATED) ' if SIMULATE else ''}Deleted event in calendar:\n\t\t{old_ev}")
+            logging.info(f"Deleted event in calendar:\n\t\t{old_ev}")
 
     def list_events(self):
-        if self._calendar is None:
+        if not self._is_connected():
             return
 
-        self._ids = {}
         events = []
-        for resource in self._calendar.get_events():
-            event = Event.from_vevent(resource.get_icalendar_component())
+        for resource in self._resources.values():
+            event = Event.from_vevent(resource.get_vobject_instance().vevent)
 
             if event is not None:
-                self._ids[event.id] = resource
                 events.append(event)
 
         return events
 
-    def _connect(self):
-        url = config.caldav_url
-        if not url:
-            raise ValueError('CalDAV URL is not configured')
-
-        client = get_davclient(
-            url=url,
-            username=config.caldav_username,
-            password=config.caldav_password)
-
-        if client is None:
-            raise ValueError('CalDAV client could not be created')
-
-        calendars = client.get_calendars()
-        calendar = None
-        for cal in calendars:
-            if cal.get_display_name() == self._calendar_name:
-                calendar = cal
-
-        if calendar is None:
-            raise ValueError(
-                f"Calendar {self._calendar_name!r} not found!")
-
-        # connection smoke test
-        calendar.get_events()
-
-        if not client.supports_scheduling():
+    def _is_connected(self):
+        if self._calendar is None or self._resources is None:
             logging.warning(
-                f"CalDAV server does not support scheduling; "
-                f"invitations will not be sent for {self._calendar_name}")
+                f"CalDAV calendar {self._calendar_name} is not connected")
+            return False
 
-        self._client = client
-        self._calendar = calendar
+        return True
 
     @staticmethod
     def _should_notify(*datetimes):
-        now = arrow.now(TIMEZONE)
+        now = arrow.now(config.timezone)
         return any(dt is not None and dt > now for dt in datetimes)
 
     @staticmethod
     def _as_calendar_ical(event, sequence, notify):
-        calendar = icalendar.Calendar()
-        calendar.add('prodid', '-//Scout Sync//')
-        calendar.add('version', '2.0')
-        calendar.add_component(event.as_vevent(sequence=sequence, notify=notify))
+        calendar = vobject.iCalendar()
+        calendar.add('prodid').value = '-//Scout Sync//'
+        calendar.add('version').value = '2.0'
+        calendar.add(event.as_vevent(sequence=sequence, notify=notify))
         return calendar
 
 

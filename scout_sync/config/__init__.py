@@ -2,7 +2,7 @@ import os
 import json
 from configparser import ConfigParser
 
-CONFIG_FILE = 'scout_sync.cfg'
+CONFIG_FILE = 'scout_sync_local.cfg'
 
 
 class Config:
@@ -83,13 +83,13 @@ class Config:
         return self._config_parser.get('COMMON', 'submit_pw')
 
     @property
-    def simulate(self):
-        return self._config_parser.getboolean('COMMON', 'simulate')
-
-    @property
     def calendar_backend(self):
         backend = self._config_parser.get(
             'COMMON', 'calendar_backend', fallback='caldav').strip().lower()
+        if backend not in ('google', 'caldav'):
+            raise ValueError(
+                f"Invalid calendar_backend '{backend}': "
+                f"expected 'google' or 'caldav'")
 
         return backend
 

@@ -3,7 +3,6 @@ google-api-python-client
 google-auth-oauthlib
 caldav
 vobject
-icalendar
 requests
 xds-protos
 arrow

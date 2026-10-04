@@ -1,12 +1,13 @@
+import copy
 import logging
 import sys
 
 import arrow
-import icalendar
 import pytest
+import vobject
 
 from scout_sync.config import config
-from scout_sync.sync.sync import TIMEZONE, CalDavHandler, Event
+from scout_sync.sync.sync import CalDavHandler, Event
 
 sync_module = sys.modules['scout_sync.sync.sync']
 
@@ -27,7 +28,7 @@ def scouter_maps(monkeypatch):
 def future_event(**overrides):
     values = {
         'id': '55802_163079_12',
-        'datetime': arrow.get(2030, 9, 20, 16, 30, tzinfo=TIMEZONE),
+        'datetime': arrow.get(2030, 9, 20, 16, 30, tzinfo=config.timezone),
         'location': 'Arena',
         'league': 'BBL',
         'opponent': 'Opponent A',
@@ -37,42 +38,43 @@ def future_event(**overrides):
     return Event(**values)
 
 
-def wrap_ical(component):
-    calendar = icalendar.Calendar()
-    calendar.add('prodid', '-//Scout Sync//')
-    calendar.add('version', '2.0')
-    calendar.add_component(component)
+def wrap_ical(vevent):
+    calendar = vobject.iCalendar()
+    calendar.add('prodid').value = '-//Scout Sync//'
+    calendar.add('version').value = '2.0'
+    calendar.add(vevent)
     return calendar
 
 
 def attendees(vevent):
-    value = vevent.get('attendee')
-    if value is None:
-        return []
-    if isinstance(value, list):
-        return value
-    return [value]
+    return vevent.contents.get('attendee', [])
 
 
 class FakeCalDavEvent:
-    def __init__(self, calendar_ical):
-        self._ical = calendar_ical
+    def __init__(self, calendar_vcal):
+        self._vcal = calendar_vcal
         self.deleted = False
         self.save_calls = []
 
-    def get_icalendar_component(self):
-        return self._ical.walk('VEVENT')[0]
+    @property
+    def id(self):
+        uid_props = self._vcal.vevent.contents.get('uid')
+        return None if not uid_props else str(uid_props[0].value)
+
+    def get_vobject_instance(self):
+        # deepcopy keeps missing properties (vobject's serialize invents a UID)
+        return copy.deepcopy(self._vcal)
 
     @property
     def data(self):
-        return self._ical
+        return self._vcal.serialize()
 
     @data.setter
     def data(self, value):
-        if isinstance(value, icalendar.Calendar):
-            self._ical = value
+        if type(value).__module__.startswith('vobject'):
+            self._vcal = value
         else:
-            self._ical = wrap_ical(value)
+            self._vcal = vobject.readOne(value)
 
     def save(self, increase_seqno=True):
         self.save_calls.append({'increase_seqno': increase_seqno})
@@ -87,6 +89,7 @@ class FakeCalendar:
         self.name = name
         self._resources = list(resources or [])
         self.added = []
+        self.client = None
 
     def get_display_name(self):
         return self.name
@@ -95,12 +98,12 @@ class FakeCalendar:
         return list(self._resources)
 
     def add_event(self, ical):
-        if isinstance(ical, icalendar.Calendar):
-            calendar_ical = ical
+        if type(ical).__module__.startswith('vobject'):
+            calendar_vcal = ical
         else:
-            calendar_ical = icalendar.Calendar.from_ical(ical)
+            calendar_vcal = vobject.readOne(ical)
 
-        resource = FakeCalDavEvent(calendar_ical)
+        resource = FakeCalDavEvent(calendar_vcal)
         self.added.append(resource)
         self._resources.append(resource)
         return resource
@@ -135,8 +138,9 @@ class FakeClient:
 def connected_handler(monkeypatch, resources=None, scheduling=True):
     calendar = FakeCalendar(resources=resources)
     client = FakeClient([calendar], scheduling=scheduling)
+    calendar.client = client
     monkeypatch.setattr(
-        sync_module, 'get_davclient', lambda **kwargs: client)
+        sync_module, 'get_calendar', lambda **kwargs: calendar)
     monkeypatch.setattr(
         type(config), 'caldav_url',
         property(lambda _: 'https://caldav.example.com'))
@@ -168,7 +172,7 @@ def test_as_vevent_from_vevent_round_trip(scouter_maps):
 
 def test_from_vevent_requires_uid(scouter_maps):
     vevent = future_event().as_vevent()
-    del vevent['uid']
+    del vevent.contents['uid']
 
     assert Event.from_vevent(vevent) is None
 
@@ -176,13 +180,13 @@ def test_from_vevent_requires_uid(scouter_maps):
 def test_as_vevent_omits_attendees_when_scouters_is_none(scouter_maps):
     vevent = future_event(scouters=None).as_vevent()
 
-    assert vevent.get('attendee') is None
+    assert 'attendee' not in vevent.contents
 
 
 def test_as_vevent_empty_scouters_writes_no_attendees(scouter_maps):
     vevent = future_event(scouters=[]).as_vevent()
 
-    assert vevent.get('attendee') is None
+    assert 'attendee' not in vevent.contents
 
 
 def test_as_vevent_notify_flag_sets_partstat_and_rsvp(scouter_maps):
@@ -191,9 +195,9 @@ def test_as_vevent_notify_flag_sets_partstat_and_rsvp(scouter_maps):
 
     def parts(vevent):
         return {
-            (str(a.params.get('CN')),
-             str(a.params.get('PARTSTAT')).upper(),
-             str(a.params.get('RSVP')).upper())
+            (str(a.params['CN'][0]),
+             str(a.params['PARTSTAT'][0]).upper(),
+             str(a.params['RSVP'][0]).upper())
             for a in attendees(vevent)}
 
     assert parts(invited) == {
@@ -207,7 +211,7 @@ def test_as_vevent_notify_flag_sets_partstat_and_rsvp(scouter_maps):
 def test_as_vevent_writes_sequence(scouter_maps):
     vevent = future_event().as_vevent(sequence=4)
 
-    assert int(vevent.get('sequence')) == 4
+    assert int(vevent.sequence.value) == 4
 
 
 def test_as_vevent_sets_organizer_from_caldav_username(scouter_maps, monkeypatch):
@@ -217,12 +221,12 @@ def test_as_vevent_sets_organizer_from_caldav_username(scouter_maps, monkeypatch
 
     vevent = future_event().as_vevent()
 
-    assert str(vevent.get('organizer')) == 'mailto:scout@example.com'
+    assert vevent.organizer.value == 'mailto:scout@example.com'
 
 
 def test_from_vevent_skips_declined_attendees(scouter_maps):
     vevent = future_event(scouters=['Alice']).as_vevent()
-    attendees(vevent)[0].params['partstat'] = 'DECLINED'
+    attendees(vevent)[0].params['PARTSTAT'] = ['DECLINED']
 
     event = Event.from_vevent(vevent)
 
@@ -238,6 +242,7 @@ def test_from_vevent_handles_single_attendee(scouter_maps):
 
 
 def test_connect_fails_without_url(scouter_maps, monkeypatch, caplog):
+    monkeypatch.setattr(sync_module, 'get_calendar', lambda **kwargs: None)
     monkeypatch.setattr(
         type(config), 'caldav_url', property(lambda _: ''))
     handler = CalDavHandler('Scouting')
@@ -249,9 +254,7 @@ def test_connect_fails_without_url(scouter_maps, monkeypatch, caplog):
 
 
 def test_connect_fails_for_unknown_calendar(scouter_maps, monkeypatch, caplog):
-    client = FakeClient([FakeCalendar(name='Other')])
-    monkeypatch.setattr(
-        sync_module, 'get_davclient', lambda **kwargs: client)
+    monkeypatch.setattr(sync_module, 'get_calendar', lambda **kwargs: None)
     monkeypatch.setattr(
         type(config), 'caldav_url',
         property(lambda _: 'https://caldav.example.com'))
@@ -260,7 +263,7 @@ def test_connect_fails_for_unknown_calendar(scouter_maps, monkeypatch, caplog):
     with caplog.at_level(logging.ERROR):
         assert handler.connect() is False
 
-    assert 'not found' in caplog.text
+    assert 'Connection to CalDAV calendar Scouting failed' in caplog.text
 
 
 def test_connect_success_logs(scouter_maps, monkeypatch, caplog):
@@ -287,14 +290,15 @@ def test_mutators_when_disconnected_are_noops(scouter_maps):
 def test_list_events_builds_ids_and_skips_missing_uid(scouter_maps, monkeypatch):
     valid = FakeCalDavEvent(wrap_ical(future_event().as_vevent()))
     vevent = future_event(id='ignored').as_vevent()
-    del vevent['uid']
+    del vevent.contents['uid']
     invalid = FakeCalDavEvent(wrap_ical(vevent))
 
     handler, _ = connected_handler(monkeypatch, resources=[valid, invalid])
     events = handler.list_events()
 
     assert [e.id for e in events] == ['55802_163079_12']
-    assert list(handler._ids) == ['55802_163079_12']
+    assert handler._resources['55802_163079_12'] is valid
+    assert handler._resources[None] is invalid
 
 
 def test_add_events_skips_missing_datetime_and_saves(scouter_maps, monkeypatch):
@@ -306,19 +310,9 @@ def test_add_events_skips_missing_datetime_and_saves(scouter_maps, monkeypatch):
         future_event(id='new-1')])
 
     assert len(calendar.added) == 1
-    vevent = calendar.added[0].get_icalendar_component()
-    assert str(vevent.get('uid')) == 'new-1'
-    assert 'new-1' in handler._ids
-
-
-def test_add_events_simulate_does_not_save(scouter_maps, monkeypatch):
-    monkeypatch.setattr(sync_module, 'SIMULATE', True)
-    handler, calendar = connected_handler(monkeypatch)
-    handler.list_events()
-
-    handler.add_events([future_event(id='new-1')])
-
-    assert calendar.added == []
+    vevent = calendar.added[0].get_vobject_instance().vevent
+    assert vevent.uid.value == 'new-1'
+    assert 'new-1' in handler._resources
 
 
 def test_update_events_increments_sequence(scouter_maps, monkeypatch):
@@ -329,9 +323,21 @@ def test_update_events_increments_sequence(scouter_maps, monkeypatch):
     handler.update_events([future_event(league='ProA')])
 
     assert existing.save_calls == [{'increase_seqno': False}]
-    vevent = existing.get_icalendar_component()
-    assert int(vevent.get('sequence')) == 3
-    assert str(vevent.get('summary')) == 'Scouting ProA'
+    vevent = existing.get_vobject_instance().vevent
+    assert int(vevent.sequence.value) == 3
+    assert vevent.summary.value == 'Scouting ProA'
+
+
+def test_update_events_omits_removed_attendee(scouter_maps, monkeypatch):
+    existing = FakeCalDavEvent(wrap_ical(future_event().as_vevent(sequence=2)))
+    handler, _ = connected_handler(monkeypatch, resources=[existing])
+    handler.list_events()
+
+    handler.update_events([future_event(scouters=['Alice'])])
+
+    assert existing.save_calls == [{'increase_seqno': False}]
+    vevent = existing.get_vobject_instance().vevent
+    assert [str(a.value) for a in attendees(vevent)] == ['mailto:alice@example.com']
 
 
 def test_update_events_missing_id_raises(scouter_maps, monkeypatch):
@@ -361,13 +367,19 @@ def test_delete_events_missing_id_raises(scouter_maps, monkeypatch):
 
 
 def test_should_notify_only_future(scouter_maps):
-    future = arrow.get(2030, 1, 1, tzinfo=TIMEZONE)
-    past = arrow.get(2020, 1, 1, tzinfo=TIMEZONE)
+    future = arrow.get(2030, 1, 1, tzinfo=config.timezone)
+    past = arrow.get(2020, 1, 1, tzinfo=config.timezone)
 
     assert CalDavHandler._should_notify(future) is True
     assert CalDavHandler._should_notify(past) is False
     assert CalDavHandler._should_notify(past, future) is True
     assert CalDavHandler._should_notify(None, past) is False
+
+
+def test_as_vevent_serializes_dtstart_with_configured_tzid(scouter_maps):
+    calendar = wrap_ical(future_event().as_vevent())
+
+    assert f'DTSTART;TZID={config.timezone}' in calendar.serialize()
 
 
 def test_calendar_backend_property_values():

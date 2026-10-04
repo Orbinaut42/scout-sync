@@ -42,7 +42,7 @@
 - Do not commit, print, or expose credentials. Treat [scout_sync/config/scout_sync.cfg](scout_sync/config/scout_sync.cfg), the local override, and [scout_sync/sync/secrets.json](scout_sync/sync/secrets.json) as sensitive; use the template/local configuration and environment variables for development.
 - Configuration is loaded from the package config and supplemented by environment variables including `EMAILS`, `SUBMIT_PW`, `OAUTH_INFO`, and `SERVICE_ACCOUNT_INFO`.
 - Runtime paths such as the log and web-cache files come from the `[COMMON]` configuration section; do not hard-code them.
-- The sync flow has external side effects: Google Calendar writes, DBB HTTP requests, and cache writes. Prefer `simulate` mode or cache input before testing behavior that mutates remote data.
+- The sync flow has external side effects: Google Calendar writes, DBB HTTP requests, and cache writes. Prefer cache input before testing behavior that mutates remote data.
 - Preserve event identifiers and `schedule_info`; they are used to correlate DBB records with Google Calendar records and to decide whether events are added, updated, or deleted.
 
 ## Implementation conventions
