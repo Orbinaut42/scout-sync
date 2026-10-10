@@ -81,11 +81,24 @@ class Event:
 
     @classmethod
     def from_vevent(cls, event):
-        """Create an event from a vobject VEVENT component"""
+        """Create an event from a vobject VEVENT component
+        Events without the Scouting category are ignored"""
 
         uid_props = event.contents.get('uid')
         dtstart_props = event.contents.get('dtstart')
         dt = dtstart_props[0].value if dtstart_props else None
+
+        categories = {
+            str(value).strip()
+            for prop in event.contents.get('categories', [])
+            for value in (prop.value if isinstance(prop.value, list) else [prop.value])}
+
+        if 'Scouting' not in categories:
+            logging.debug(
+                f"Ignoring event at {dt if dt else 'unknown time'}: "
+                "no Scouting category")
+            return
+
         if not uid_props:
             logging.warning(
                 f"Invalid event at {dt if dt else 'unknown time'}")
@@ -265,6 +278,7 @@ class Event:
         event = vobject.iCalendar().add('vevent')
         event.add('uid').value = self.id
         event.add('sequence').value = str(sequence)
+        event.add('categories').value = ['Scouting']
 
         start = self.datetime.to(config.timezone)
         dtstart = event.add('dtstart')
@@ -501,11 +515,15 @@ class CalDavHandler():
 
             old_vevent = resource.get_vobject_instance().vevent
             old_ev = Event.from_vevent(old_vevent)
+
+            if old_ev is None:
+                logging.warning(
+                    f"Can not update event {ev.id}: event is not managed by this app")
+                continue
+
             seq_props = old_vevent.contents.get('sequence')
             sequence = int(seq_props[0].value if seq_props else 0) + 1
-            notify = self._should_notify(
-                old_ev.datetime if old_ev else None,
-                ev.datetime)
+            notify = self._should_notify(old_ev.datetime, ev.datetime)
 
             resource.data = self._as_calendar_ical(ev, sequence=sequence, notify=notify)
             resource.save(increase_seqno=False)
@@ -525,6 +543,11 @@ class CalDavHandler():
 
             old_vevent = resource.get_vobject_instance().vevent
             old_ev = Event.from_vevent(old_vevent)
+
+            if old_ev is None:
+                logging.warning(
+                    f"Can not delete event {ev.id}: event is not managed by this app")
+                continue
 
             resource.delete()
 

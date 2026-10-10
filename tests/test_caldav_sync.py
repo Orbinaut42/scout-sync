@@ -214,6 +214,19 @@ def test_as_vevent_writes_sequence(scouter_maps):
     assert int(vevent.sequence.value) == 4
 
 
+def test_as_vevent_sets_scouting_category(scouter_maps):
+    vevent = future_event().as_vevent()
+
+    assert vevent.categories.value == ['Scouting']
+
+
+def test_as_vevent_scouting_category_survives_serialization(scouter_maps):
+    calendar = wrap_ical(future_event().as_vevent())
+
+    assert 'CATEGORIES:Scouting' in calendar.serialize()
+    assert Event.from_vevent(vobject.readOne(calendar.serialize()).vevent) is not None
+
+
 def test_as_vevent_sets_organizer_from_caldav_username(scouter_maps, monkeypatch):
     monkeypatch.setattr(
         type(config), 'caldav_username',
@@ -239,6 +252,27 @@ def test_from_vevent_handles_single_attendee(scouter_maps):
     event = Event.from_vevent(vevent)
 
     assert event.scouters == ['Bob']
+
+
+def test_from_vevent_ignores_events_without_category(scouter_maps):
+    vevent = future_event().as_vevent()
+    del vevent.contents['categories']
+
+    assert Event.from_vevent(vevent) is None
+
+
+def test_from_vevent_ignores_other_categories(scouter_maps):
+    vevent = future_event().as_vevent()
+    vevent.categories.value = ['Private']
+
+    assert Event.from_vevent(vevent) is None
+
+
+def test_from_vevent_accepts_additional_categories(scouter_maps):
+    vevent = future_event().as_vevent()
+    vevent.categories.value = ['Private', 'Scouting']
+
+    assert Event.from_vevent(vevent) is not None
 
 
 def test_connect_fails_without_url(scouter_maps, monkeypatch, caplog):
@@ -299,6 +333,48 @@ def test_list_events_builds_ids_and_skips_missing_uid(scouter_maps, monkeypatch)
     assert [e.id for e in events] == ['55802_163079_12']
     assert handler._resources['55802_163079_12'] is valid
     assert handler._resources[None] is invalid
+
+
+def test_list_events_ignores_foreign_events(scouter_maps, monkeypatch):
+    managed = FakeCalDavEvent(wrap_ical(future_event().as_vevent()))
+    foreign_vevent = future_event(id='foreign-1').as_vevent()
+    del foreign_vevent.contents['categories']
+    foreign = FakeCalDavEvent(wrap_ical(foreign_vevent))
+
+    handler, _ = connected_handler(monkeypatch, resources=[managed, foreign])
+    events = handler.list_events()
+
+    assert [e.id for e in events] == ['55802_163079_12']
+
+
+def test_update_events_skips_foreign_events(scouter_maps, monkeypatch, caplog):
+    foreign_vevent = future_event(id='foreign-1').as_vevent()
+    del foreign_vevent.contents['categories']
+    foreign = FakeCalDavEvent(wrap_ical(foreign_vevent))
+
+    handler, _ = connected_handler(monkeypatch, resources=[foreign])
+    handler.list_events()
+
+    with caplog.at_level(logging.WARNING):
+        handler.update_events([future_event(id='foreign-1')])
+
+    assert foreign.save_calls == []
+    assert 'Can not update event foreign-1: event is not managed by this app' in caplog.text
+
+
+def test_delete_events_skips_foreign_events(scouter_maps, monkeypatch, caplog):
+    foreign_vevent = future_event(id='foreign-1').as_vevent()
+    del foreign_vevent.contents['categories']
+    foreign = FakeCalDavEvent(wrap_ical(foreign_vevent))
+
+    handler, _ = connected_handler(monkeypatch, resources=[foreign])
+    handler.list_events()
+
+    with caplog.at_level(logging.WARNING):
+        handler.delete_events([future_event(id='foreign-1')])
+
+    assert foreign.deleted is False
+    assert 'Can not delete event foreign-1: event is not managed by this app' in caplog.text
 
 
 def test_add_events_skips_missing_datetime_and_saves(scouter_maps, monkeypatch):

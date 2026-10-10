@@ -44,6 +44,7 @@
 - Runtime paths such as the log and web-cache files come from the `[COMMON]` configuration section; do not hard-code them.
 - The sync flow has external side effects: Google Calendar writes, DBB HTTP requests, and cache writes. Prefer cache input before testing behavior that mutates remote data.
 - Preserve event identifiers and `schedule_info`; they are used to correlate DBB records with Google Calendar records and to decide whether events are added, updated, or deleted.
+- VEVENTs created for the CalDAV calendar are marked with `CATEGORIES:Scouting`; when reading from the calendar, events without this category are ignored and left untouched, since the calendar may also contain events unrelated to the app.
 
 ## Implementation conventions
 
