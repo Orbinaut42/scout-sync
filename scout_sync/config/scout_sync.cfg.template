@@ -17,7 +17,8 @@ web_cache_file = events.json.cache
 # Password for submitting from the webpage
 submit_pw =
 
-simulate = False
+# calendar backend: google or caldav
+calendar_backend = caldav
 
 [GOOGLE_API]
 # Google API authentication information (to be passed to google.oauth2 credentials)
@@ -28,6 +29,16 @@ service_account_info =
 # Google Calendar ID
 # dont use calendar id 'primary' with service account authentication
 id =
+
+[CALDAV]
+# CalDAV server URL
+url =
+# Name of the calendar on the CalDAV server
+calendar_name =
+# Username for CalDAV authentication
+username =
+# Password for CalDAV authentication
+password =
 
 [SCHEDULE_LEAGUES]
 # key = league name, league ID, teamPermanentId, teamSeasonId

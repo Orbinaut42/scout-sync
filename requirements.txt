@@ -1,6 +1,8 @@
 Flask
 google-api-python-client
 google-auth-oauthlib
+caldav
+vobject
 requests
 xds-protos
 arrow

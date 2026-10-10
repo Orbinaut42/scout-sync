@@ -5,10 +5,12 @@ description = ""
 authors = ["name <e@mail.com>"]
 
 [tool.poetry.dependencies]
-python = "*"
+python = ">3.10"
 Flask = "*"
 google-api-python-client = "*"
 google-auth-oauthlib = "*"
+caldav = ">3.2"
+vobject = "*"
 requests = "*"
 xds-protos = "*"
 arrow = "*"
