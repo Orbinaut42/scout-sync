@@ -2,7 +2,7 @@ import os
 import json
 from configparser import ConfigParser
 
-CONFIG_FILE = 'scout_sync_local.cfg'
+CONFIG_FILE = 'scout_sync.cfg'
 
 
 class Config:
