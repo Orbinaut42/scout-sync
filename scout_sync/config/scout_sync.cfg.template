@@ -41,7 +41,7 @@ username =
 password =
 
 [SCHEDULE_LEAGUES]
-# key = league name, league ID, teamPermanentId, teamSeasonId
+# league_<league ID>_<teamPermanentId> = league name, league ID, teamPermanentId, teamSeasonId
 
 [SCHEDULE_ARENAS]
 # arena id = Name

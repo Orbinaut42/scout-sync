@@ -1,0 +1,29 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["data"],
+    "properties": {
+        "data": {
+            "type": "object",
+            "required": ["matches"],
+            "properties": {
+                "matches": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["homeTeam"],
+                        "properties": {
+                            "homeTeam": {
+                                "type": "object",
+                                "required": ["teamPermanentId"],
+                                "properties": {
+                                    "teamPermanentId": {"type": "integer"}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
