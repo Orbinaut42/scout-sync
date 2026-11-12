@@ -1,4 +1,4 @@
-import configparser
+import csv
 import json
 import logging
 from pathlib import Path
@@ -6,8 +6,9 @@ from pathlib import Path
 import requests
 from jsonschema import ValidationError, validate
 
+from scout_sync.config import config
 
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,25 +18,12 @@ def _load_json(filename):
         return json.load(file)
 
 
-def _parse_config_value(value):
-    try:
-        return json.loads(value)
-    except json.JSONDecodeError:
-        return value
-
-
 liga_list_schema = _load_json('liga_list_schema.json')
 liga_schedule_schema = _load_json('liga_schedule_schema.json')
-
-scan_config = configparser.ConfigParser(interpolation=None)
-scan_config.optionxform = str
-scan_config.read(Path(__file__).with_name('config.cfg'), encoding='utf-8')
 
 api_url = 'https://www.basketball-bund.net/rest'
 list_url = f"{api_url}/wam/liga/list?startAtIndex={{start_idx}}"
 schedule_url = f"{api_url}/competition/spielplan/id/{{league_id}}"
-config_path = Path(__file__).parents[1] / 'config' / 'scout_sync.cfg'
-schedule_leagues_section = 'SCHEDULE_LEAGUES'
 
 
 def _fetch_leagues(session, params):
@@ -44,7 +32,8 @@ def _fetch_leagues(session, params):
 
     while True:
         url = list_url.format(start_idx=start_idx)
-        response = session.post(url, json=params)
+        response = session.post(
+            url, json=params, timeout=config.schedule_request_timeout)
 
         if response.status_code != 200:
             logger.error('Error: %s - %s', response.status_code, response.text)
@@ -68,13 +57,13 @@ def _fetch_leagues(session, params):
     return leagues
 
 
-def _find_team_leagues(session, params, permanent_id):
+def _find_team_leagues(session, params, team_permanent_id):
     league_ids = []
 
     for league in _fetch_leagues(session, params):
         league_id = league['ligaId']
         url = schedule_url.format(league_id=league_id)
-        response = session.get(url)
+        response = session.get(url, timeout=config.schedule_request_timeout)
 
         if response.status_code != 200:
             logger.error(
@@ -95,60 +84,66 @@ def _find_team_leagues(session, params, permanent_id):
             match['homeTeam']['teamPermanentId']
             for match in response_data['data']['matches']]
 
-        if permanent_id in home_team_ids:
+        if team_permanent_id in home_team_ids:
             league_ids.append(league_id)
 
     return league_ids
 
 
-def _update_schedule_leagues(scan_results):
-    parser = configparser.ConfigParser(interpolation=None)
-    parser.optionxform = str
-    parser.read(config_path, encoding='utf-8')
+def _append_schedule_leagues(scan_results):
+    leagues_path = Path(config.schedule_leagues_file)
+    known_leagues = set()
+    write_header = True
+    prepend_newline = False
 
-    if not parser.has_section(schedule_leagues_section):
-        parser.add_section(schedule_leagues_section)
+    if leagues_path.exists() and leagues_path.stat().st_size > 0:
+        known_leagues = {
+            (league['league_id'], league['team_permanent_id'])
+            for league in config.schedule_leagues}
+        write_header = False
+        with leagues_path.open('rb') as file:
+            file.seek(-1, 2)
+            prepend_newline = file.read(1) != b'\n'
 
-    leagues = parser[schedule_leagues_section]
     new_leagues = []
-
     for team_name, team in scan_results.items():
-        permanent_id = str(team['permanent_id'])
         for league_id in team['league_ids']:
-            key = f'league_{league_id}_{permanent_id}'
-            if key in leagues:
+            if (league_id, team['team_permanent_id']) in known_leagues:
                 continue
 
-            value = f'{team_name}, {league_id}, {permanent_id},'
-            leagues[key] = value
-            new_leagues.append(f'{key} = {value}')
+            known_leagues.add((league_id, team['team_permanent_id']))
+            new_leagues.append([team_name, league_id, team['team_permanent_id'], ''])
 
-    if new_leagues:
-        with config_path.open('w', encoding='utf-8') as file:
-            parser.write(file)
+    if not new_leagues:
+        return
 
-        for league in new_leagues:
-            logger.info('Added league to %s: %s', config_path, league)
+    with leagues_path.open('a', encoding='utf-8', newline='') as file:
+        if prepend_newline:
+            file.write('\n')
+
+        writer = csv.writer(file, lineterminator='\n')
+        if write_header:
+            writer.writerow([
+                'league_name', 'league_id', 'team_permanent_id', 'team_season_id'])
+
+        writer.writerows(new_leagues)
+
+    for league in new_leagues:
+        logger.info('Added league: %s', league)
 
 
-def update_config():
+def update_schedule_leagues():
     scan_results = {}
 
     with requests.Session() as session:
-        for team_name in scan_config.sections():
-            team = scan_config[team_name]
-            permanent_id = team.getint('permanent_id')
-            params = {
-                key: _parse_config_value(value)
-                for key, value in team.items()
-                if key != 'permanent_id'
-            }
-            league_ids = _find_team_leagues(session, params, permanent_id)
+        for team_name, params in config.scan_leagues.items():
+            team_permanent_id = params.pop('teamPermanentId')
+            league_ids = _find_team_leagues(session, params, team_permanent_id)
             scan_results[team_name] = {
-                'permanent_id': permanent_id,
+                'team_permanent_id': team_permanent_id,
                 'league_ids': league_ids}
             logger.info(
-                'Leagues with %s as home team (%s): %s',
-                team_name, permanent_id, league_ids)
+                'Leagues for %s (%s): %s',
+                team_name, team_permanent_id, league_ids)
 
-    _update_schedule_leagues(scan_results)
+    _append_schedule_leagues(scan_results)

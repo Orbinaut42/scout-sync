@@ -1,23 +1,19 @@
-import os
+import csv
 import json
+import os
 from configparser import ConfigParser
 
-CONFIG_FILE = 'scout_sync.cfg'
+CONFIG_FILE = 'scout_sync_local.cfg'
 
 
 class Config:
     """Provides application configuration values."""
 
     def __init__(self, config_file):
-        config_parser = ConfigParser(
-            converters={'list': lambda line: [
-                int(v)
-                if v.isdigit()
-                else v
-                for v in [w.strip() for w in line.split(',')]]},
-            interpolation=None)
+        config_parser = ConfigParser(interpolation=None)
         config_parser.optionxform = str
-        config_parser.read(os.path.join(__path__[0], config_file), encoding='utf8')
+        config_path = os.path.join(__path__[0], config_file)
+        config_parser.read(config_path, encoding='utf8')
 
         # read email adresses and calendar auth infos from environment variables
         for name, email in json.loads(os.getenv('EMAILS', default='{}')).items():
@@ -53,6 +49,7 @@ class Config:
                 'CALDAV_PASSWORD', default='')
 
         self._config_parser = config_parser
+        self._config_dir = os.path.dirname(config_path)
 
     @property
     def log_file(self):
@@ -123,12 +120,47 @@ class Config:
         return self._config_parser.get('CALDAV', 'password', fallback=None)
 
     @property
+    def schedule_leagues_file(self):
+        return os.path.join(
+            self._config_dir,
+            self._config_parser.get('COMMON', 'schedule_leagues_file'))
+
+    @property
     def schedule_leagues(self):
-        return [
-            dict(zip(
-                ['league_name', 'league_id', 'team_permanent_id', 'team_season_id'],
-                self._config_parser.getlist('SCHEDULE_LEAGUES', name)))
-            for name, _ in self._config_parser.items('SCHEDULE_LEAGUES')]
+        with open(self.schedule_leagues_file, encoding='utf8', newline='') as file:
+            return [
+                {
+                    'league_name': row['league_name'],
+                    'league_id': int(row['league_id']),
+                    'team_permanent_id': (
+                        int(row['team_permanent_id'])
+                        if row['team_permanent_id'] else None),
+                    'team_season_id': (
+                        int(row['team_season_id'])
+                        if row['team_season_id'] else None)}
+                for row in csv.DictReader(file, skipinitialspace=True)]
+
+    @property
+    def scan_leagues(self):
+        def parse_value(value):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                return value
+
+        prefix = 'SCAN_LEAGUES:'
+        common_params = (
+            self._config_parser['SCAN_LEAGUES']
+            if self._config_parser.has_section('SCAN_LEAGUES')
+            else {})
+        return {
+            section.removeprefix(prefix): {
+                key: parse_value(value)
+                for key, value in {
+                    **common_params,
+                    **self._config_parser[section]}.items()}
+            for section in self._config_parser.sections()
+            if section.startswith(prefix)}
 
     @property
     def schedule_arenas(self):
@@ -143,6 +175,11 @@ class Config:
         if not self._config_parser.has_section('SYNC_JOB'):
             return None
         return self._config_parser.getint('SYNC_JOB', 'interval', fallback=None)
+
+    @property
+    def scan_leagues_interval(self):
+        return self._config_parser.getint(
+            'SCAN_LEAGUES_JOB', 'interval', fallback=None)
 
 
 config = Config(CONFIG_FILE)

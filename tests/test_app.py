@@ -4,6 +4,7 @@ import re
 from werkzeug.datastructures import MultiDict
 
 import scout_sync.app.app as app_module
+from scout_sync.config import config
 
 
 def write_cache(cache_file, events):
@@ -465,3 +466,29 @@ def test_migrated_routes_exist_and_hx_routes_do_not(app_env):
     assert client.post('/list/edit', data={'password': 'wrong'}).status_code == 200
     assert client.get('/list/hx/events').status_code == 404
     assert client.post('/list/hx/edit').status_code in (404, 405)
+
+
+def test_app_startup_schedules_sync_and_league_scan_jobs(app_env, monkeypatch):
+    monkeypatch.setattr(type(config), 'sync_interval', property(lambda _: 60))
+    monkeypatch.setattr(
+        type(config), 'scan_leagues_interval', property(lambda _: 1440))
+
+    app_module.app_startup()
+
+    jobs = {kwargs['id']: (args, kwargs) for args, kwargs in app_env['scheduler'].jobs}
+    assert jobs['schedule-sync'][0] == (app_module.sync, 'interval')
+    assert jobs['schedule-sync'][1]['minutes'] == 60
+    assert jobs['scan-leagues'][0] == (
+        app_module.update_schedule_leagues, 'interval')
+    assert jobs['scan-leagues'][1]['minutes'] == 1440
+
+
+def test_app_startup_skips_league_scan_job_without_interval(
+        app_env, monkeypatch):
+    monkeypatch.setattr(type(config), 'sync_interval', property(lambda _: None))
+    monkeypatch.setattr(
+        type(config), 'scan_leagues_interval', property(lambda _: None))
+
+    app_module.app_startup()
+
+    assert app_env['scheduler'].jobs == []

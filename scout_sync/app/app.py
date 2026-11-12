@@ -7,6 +7,7 @@ from flask import Flask, request, make_response, render_template
 from apscheduler.schedulers.background import BackgroundScheduler
 from ..config import config
 from ..sync import sync, Event, WebCacheHandler
+from ..scan_leagues import update_schedule_leagues
 
 logging.basicConfig(
     filename=config.log_file,
@@ -343,6 +344,17 @@ def app_startup():
             minutes=interval,
             start_date=arrow.get().shift(seconds=10).datetime,
             id='schedule-sync',
+            replace_existing=True)
+
+    scan_interval = config.scan_leagues_interval
+    if scan_interval is not None:
+        print(f'Scheduling league scan job every {scan_interval} minutes.')
+        _scheduler.add_job(
+            update_schedule_leagues,
+            'interval',
+            minutes=scan_interval,
+            start_date=arrow.get().shift(minutes=1).datetime,
+            id='scan-leagues',
             replace_existing=True)
 
     return _app

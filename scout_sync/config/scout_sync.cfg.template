@@ -14,6 +14,9 @@ schedule_request_timeout = 20
 # events cache file name
 web_cache_file = events.json.cache
 
+# CSV file with the leagues to read from the DBB schedule, relative to the config directory
+schedule_leagues_file = schedule_leagues.csv
+
 # Password for submitting from the webpage
 submit_pw =
 
@@ -40,8 +43,18 @@ username =
 # Password for CalDAV authentication
 password =
 
-[SCHEDULE_LEAGUES]
-# league_<league ID>_<teamPermanentId> = league name, league ID, teamPermanentId, teamSeasonId
+[SCAN_LEAGUES]
+# DBB league list request parameters (JSON values) used for all teams
+token = 0
+verbandIds = []
+ligatypIds = []
+
+[SCAN_LEAGUES:Team name]
+# teamPermanentId of the team and additional league list request parameters
+teamPermanentId =
+akgGeschlechtIds = []
+altersklasseIds = []
+spielklasseIds = []
 
 [SCHEDULE_ARENAS]
 # arena id = Name
@@ -52,3 +65,7 @@ password =
 [SYNC_JOB]
 # interval for updating the calender from the schedule in minutes
 interval = 60
+
+[SCAN_LEAGUES_JOB]
+# interval for scanning the DBB database for new leagues of the teams in minutes
+interval = 1440
