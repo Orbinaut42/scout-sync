@@ -1,0 +1,36 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["status", "data"],
+    "properties": {
+        "timestamp": {"type": "string"},
+        "status": {"type": "string"},
+        "message": {"type": "string"},
+        "data": {
+            "type": "object",
+            "required": ["startAtIndex", "ligen", "hasMoreData", "size"],
+            "properties": {
+                "startAtIndex": {"type": "integer"},
+                "ligen": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["ligaId"],
+                        "properties": {
+                            "ligaId": {"type": "integer"}
+                        }
+                    }
+                },
+                "hasMoreData": {"type": "boolean"},
+                "size": {"type": "integer"}
+            }
+        },
+        "version": {"type": "string"},
+        "dateFormat": {"type": "string"},
+        "timeFormat": {"type": "string"},
+        "timeFormatShort": {"type": "string"},
+        "serverInstance": {"type": "string"},
+        "username": {"type": ["string", "null"]},
+        "appContext": {"type": "string"}
+    }
+}

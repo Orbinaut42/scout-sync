@@ -774,6 +774,14 @@ def sync(source):
     start_time = time.time()
     logging.info(f"Starting sync from {source}")
 
+    if source == 'schedule':
+        schedule_leagues = config.schedule_leagues
+        if schedule_leagues is None:
+            logging.warning(
+                f"Skipping sync: schedule leagues file "
+                f"{config.schedule_leagues_file} not found")
+            return
+
     if config.calendar_backend == 'caldav':
         calendar_hdl = CalDavHandler(config.caldav_calendar_name)
     else:
@@ -785,8 +793,6 @@ def sync(source):
     cache_hdl = WebCacheHandler(config.web_cache_file)
 
     if source == 'schedule':
-        schedule_leagues = config.schedule_leagues
-
         schedule_hdl = ScheduleHandler(schedule_leagues)
         if not schedule_hdl.connect():
             raise RuntimeError('DBB schedule download failed.')

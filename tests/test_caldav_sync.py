@@ -479,3 +479,19 @@ def test_calendar_backend_property_values():
 
     with pytest.raises(ValueError, match='calendar_backend'):
         backend_value('outlook')
+
+
+def test_sync_skips_when_schedule_leagues_file_missing(monkeypatch, tmp_path, caplog):
+    def fail(*args, **kwargs):
+        raise AssertionError('calendar must not be accessed')
+
+    monkeypatch.setattr(
+        type(config), 'schedule_leagues_file',
+        property(lambda _: str(tmp_path / 'missing.csv')))
+    monkeypatch.setattr(sync_module, 'CalDavHandler', fail)
+    monkeypatch.setattr(sync_module, 'CalendarHandler', fail)
+
+    with caplog.at_level(logging.WARNING):
+        sync_module.sync('schedule')
+
+    assert 'Skipping sync' in caplog.text

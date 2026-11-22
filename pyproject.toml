@@ -16,6 +16,7 @@ xds-protos = "*"
 arrow = "*"
 gunicorn = "*"
 APScheduler = "*"
+jsonschema = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
