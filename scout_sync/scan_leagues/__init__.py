@@ -142,7 +142,7 @@ def update_schedule_leagues():
             scan_results[team_name] = {
                 'team_permanent_id': team_permanent_id,
                 'league_ids': league_ids}
-            logger.info(
+            logger.debug(
                 'Leagues for %s (%s): %s',
                 team_name, team_permanent_id, league_ids)
 

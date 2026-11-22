@@ -33,6 +33,12 @@ def test_schedule_leagues_reads_csv(leagues_file):
             'team_season_id': 99999}]
 
 
+def test_schedule_leagues_returns_none_for_missing_file(leagues_file):
+    leagues_file.unlink()
+
+    assert config.schedule_leagues is None
+
+
 def test_scan_leagues_merges_common_and_team_params(tmp_path):
     config_path = tmp_path / 'test.cfg'
     config_path.write_text(

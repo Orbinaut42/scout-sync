@@ -127,6 +127,10 @@ class Config:
 
     @property
     def schedule_leagues(self):
+        """Return the leagues from the schedule leagues file, or None if the file does not exist."""
+        if not os.path.exists(self.schedule_leagues_file):
+            return None
+
         with open(self.schedule_leagues_file, encoding='utf8', newline='') as file:
             return [
                 {
