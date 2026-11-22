@@ -602,7 +602,7 @@ class ScheduleHandler:
 
                     except (json.decoder.JSONDecodeError, ValueError):
                         self._failed_league_downloads.append(str(league_id))
-                        logging.warning(f"Can not read schedule for league {league_name}")
+                        logging.warning(f"Can not read schedule for league {league_name} ({league_id})")  # noqa: E501
                         continue
                 else:
                     self._failed_league_downloads.append(str(league_id))
