@@ -81,24 +81,11 @@ class Event:
 
     @classmethod
     def from_vevent(cls, event):
-        """Create an event from a vobject VEVENT component
-        Events without the Scouting category are ignored"""
+        """Create an event from a vobject VEVENT component"""
 
         uid_props = event.contents.get('uid')
         dtstart_props = event.contents.get('dtstart')
         dt = dtstart_props[0].value if dtstart_props else None
-
-        categories = {
-            str(value).strip()
-            for prop in event.contents.get('categories', [])
-            for value in (prop.value if isinstance(prop.value, list) else [prop.value])}
-
-        if 'Scouting' not in categories:
-            logging.debug(
-                f"Ignoring event at {dt if dt else 'unknown time'}: "
-                "no Scouting category")
-            return
-
         if not uid_props:
             logging.warning(
                 f"Invalid event at {dt if dt else 'unknown time'}")
@@ -278,7 +265,6 @@ class Event:
         event = vobject.iCalendar().add('vevent')
         event.add('uid').value = self.id
         event.add('sequence').value = str(sequence)
-        event.add('categories').value = ['Scouting']
 
         start = self.datetime.to(config.timezone)
         dtstart = event.add('dtstart')
@@ -515,15 +501,11 @@ class CalDavHandler():
 
             old_vevent = resource.get_vobject_instance().vevent
             old_ev = Event.from_vevent(old_vevent)
-
-            if old_ev is None:
-                logging.warning(
-                    f"Can not update event {ev.id}: event is not managed by this app")
-                continue
-
             seq_props = old_vevent.contents.get('sequence')
             sequence = int(seq_props[0].value if seq_props else 0) + 1
-            notify = self._should_notify(old_ev.datetime, ev.datetime)
+            notify = self._should_notify(
+                old_ev.datetime if old_ev else None,
+                ev.datetime)
 
             resource.data = self._as_calendar_ical(ev, sequence=sequence, notify=notify)
             resource.save(increase_seqno=False)
@@ -543,11 +525,6 @@ class CalDavHandler():
 
             old_vevent = resource.get_vobject_instance().vevent
             old_ev = Event.from_vevent(old_vevent)
-
-            if old_ev is None:
-                logging.warning(
-                    f"Can not delete event {ev.id}: event is not managed by this app")
-                continue
 
             resource.delete()
 
@@ -625,7 +602,7 @@ class ScheduleHandler:
 
                     except (json.decoder.JSONDecodeError, ValueError):
                         self._failed_league_downloads.append(str(league_id))
-                        logging.warning(f"Can not read schedule for league {league_name}")
+                        logging.warning(f"Can not read schedule for league {league_name} ({league_id})")  # noqa: E501
                         continue
                 else:
                     self._failed_league_downloads.append(str(league_id))
@@ -774,6 +751,14 @@ def sync(source):
     start_time = time.time()
     logging.info(f"Starting sync from {source}")
 
+    if source == 'schedule':
+        schedule_leagues = config.schedule_leagues
+        if schedule_leagues is None:
+            logging.warning(
+                f"Skipping sync: schedule leagues file "
+                f"{config.schedule_leagues_file} not found")
+            return
+
     if config.calendar_backend == 'caldav':
         calendar_hdl = CalDavHandler(config.caldav_calendar_name)
     else:
@@ -785,8 +770,6 @@ def sync(source):
     cache_hdl = WebCacheHandler(config.web_cache_file)
 
     if source == 'schedule':
-        schedule_leagues = config.schedule_leagues
-
         schedule_hdl = ScheduleHandler(schedule_leagues)
         if not schedule_hdl.connect():
             raise RuntimeError('DBB schedule download failed.')

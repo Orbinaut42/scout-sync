@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "scout-sync"
-version = "2.0.0"
+version = "2.1.0"
 description = ""
 authors = ["name <e@mail.com>"]
 
@@ -16,6 +16,7 @@ xds-protos = "*"
 arrow = "*"
 gunicorn = "*"
 APScheduler = "*"
+jsonschema = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"

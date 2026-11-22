@@ -8,3 +8,4 @@ xds-protos
 arrow
 gunicorn
 APScheduler
+jsonschema

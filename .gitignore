@@ -14,3 +14,4 @@ venv/
 *.cache
 secrets.json
 scout_sync_local.cfg
+schedule_leagues_local.csv
